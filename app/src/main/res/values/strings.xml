@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">StegCam</string>
+    <string name="picture">Picture</string>
+    <string name="request_permission">Sorry! You cannot use this app without camera permission.</string>
+    <string name="clear">Clear</string>
+
+</resources>
