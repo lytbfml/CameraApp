@@ -922,18 +922,18 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 					imgNeed = x;
 				}
 				
-				String miso = manualISO.getText().toString().trim();
-				String mexp = manualExp.getText().toString().trim();
-				String mexp2 = manualExp2.getText().toString().trim();
-				if (!(miso.isEmpty() || mexp.isEmpty() || mexp2.isEmpty())) {
-					manSet = true;
-					current_ISO = Integer.parseInt(manualISO.getText().toString());
-					long manExp = Long.parseLong(manualExp.getText().toString());
-					long manExp2 = Long.parseLong(manualExp2.getText().toString());
-					
-					current_EXP = (manExp * 1000000000 / manExp2);
-					Log.d(TAG, "Manual settings!\n" + "ISO: " + current_ISO + ", " + "EXP: " + Long.toString(current_EXP));
-				}
+//				String miso = manualISO.getText().toString().trim();
+//				String mexp = manualExp.getText().toString().trim();
+//				String mexp2 = manualExp2.getText().toString().trim();
+//				if (!(miso.isEmpty() || mexp.isEmpty() || mexp2.isEmpty())) {
+//					manSet = true;
+//					current_ISO = Integer.parseInt(manualISO.getText().toString());
+//					long manExp = Long.parseLong(manualExp.getText().toString());
+//					long manExp2 = Long.parseLong(manualExp2.getText().toString());
+//
+//					current_EXP = (manExp * 1000000000 / manExp2);
+//					Log.d(TAG, "Manual settings!\n" + "ISO: " + current_ISO + ", " + "EXP: " + Long.toString(current_EXP));
+//				}
 			}
 			
 			// Update state machine to wait for auto-focus, auto-exposure, and auto-white-balance (aka. "3A") to converge.
