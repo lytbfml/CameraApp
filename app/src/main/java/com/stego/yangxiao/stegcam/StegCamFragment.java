@@ -48,7 +48,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class StegCamFragment extends Fragment implements View.OnClickListener, FragmentCompat.OnRequestPermissionsResultCallback {
 	
-	int imgNeed = 0;
+	int imgNeed = 1;
 	
 	private static final String SHARED_PREFERENCES = "com.stegCam.yangxiao";
 	private static final String TOTAL_IMAGECOUNTER = "totalImageCounter";
@@ -339,7 +339,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 						if (readyToCapture && mPendingUserCaptures > 0) {
 							// Capture once for each user tap of the "Picture" button.
 							while (mPendingUserCaptures > 0) {
-								captureStillPictureLocked(0, 0);
+								captureStillPictureLocked(0, 0, false);
 								mPendingUserCaptures--;
 							}
 							// After this, the camera will go back to the normal state of preview.
@@ -862,8 +862,13 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			}
 			
 			if (mRequestCounter.intValue() == 0) {
-				int x = Integer.parseInt(et.getText().toString());
-				imgNeed = x;
+				//Check if user input number of photos for each setting.
+				String mImgNeed = et.getText().toString().trim();
+				if (!mImgNeed.isEmpty()) {
+					int x = Integer.parseInt(et.getText().toString());
+					imgNeed = x;
+				}
+				
 				String miso = manualISO.getText().toString().trim();
 				String mexp = manualExp.getText().toString().trim();
 				String mexp2 = manualExp2.getText().toString().trim();
@@ -906,12 +911,16 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	
 	
 	/**
-	 * Send a capture request to the camera device that initiates a capture targeting the JPEG and
+	 * * Send a capture request to the camera device that initiates a capture targeting the JPEG and
 	 * RAW outputs.
 	 * <p/>
 	 * Call this only with {@link #mCameraStateLock} held.
+	 *
+	 * @param isoValue manual set iso
+	 * @param exp      manual set exp
+	 * @param manual   true if manual setting
 	 */
-	private void captureStillPictureLocked(int isoValue, long exp) {
+	private void captureStillPictureLocked(int isoValue, long exp, boolean manual) {
 		
 		try {
 			final Activity activity = getActivity();
@@ -925,11 +934,16 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			//			captureBuilder.addTarget(mJpegImageReader.get().getSurface());
 			captureBuilder.addTarget(mRawImageReader.get().getSurface());
 			
-			// Use the same AE and AF modes as the preview.
-			//			setup3AControlsLocked(captureBuilder);
-			captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
-			captureBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, isoValue);
-			captureBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, exp);
+			
+			if (manual) {
+				captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+				captureBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, isoValue);
+				captureBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, exp);
+			} else {
+				// Use the same AE and AF modes as the preview.
+				setup3AControlsLocked(captureBuilder);
+			}
+			
 			
 			// Set orientation.
 			int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
@@ -1001,10 +1015,10 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	 */
 	private void finishedCaptureLocked() {
 		updateCounter();
-		if (mRequestCounter.intValue() < imgNeed) {
+		if (mRequestCounter.intValue() < (imgNeed * 10)) {
 			new Handler().postDelayed(this::takePicture, 500);
 		}
-		if (mRequestCounter.intValue() >= imgNeed) {
+		if (mRequestCounter.intValue() >= (imgNeed * 10)) {
 			detachProcessBar();
 			AlertDialogFragment.buildAlertDialog("TASK FINISHED").show(getFragmentManager(), "dialog");
 		}
@@ -1554,59 +1568,58 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	}
 	
 	private void nineDataSet() {
+		
 		if (mRequestCounter.intValue() == 0) {
 			current_ISO = ISO_VALUE_100;
 			current_EXP = EXPOSURE_TIME_1_50;
 			
 			bar1.setVisibility(View.VISIBLE);
-			bar1.setMax(imgNeed);
+			bar1.setMax(imgNeed * 10);
 			bar2.setVisibility(View.VISIBLE);
 			
-			new Handler().postDelayed(new Runnable() {
-				@Override
-				public void run() {
-					captureStillPictureLocked(current_ISO, current_EXP);
-				}
-			}, 5000);
+			new Handler().postDelayed(() -> captureStillPictureLocked(current_ISO, current_EXP, true), 5000);
 		}
 		
-		if (mRequestCounter.intValue() < 51 && mRequestCounter.intValue() != 0) {
+		if (mRequestCounter.intValue() < (imgNeed + 1) && mRequestCounter.intValue() != 0) {
 			current_ISO = ISO_VALUE_100;
 			current_EXP = EXPOSURE_TIME_1_50;
-			captureStillPictureLocked(current_ISO, current_EXP);
-		} else if (mRequestCounter.intValue() >= 51 && mRequestCounter.intValue() < 101) {
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed + 1) && mRequestCounter.intValue() < (imgNeed * 2 + 1)) {
 			current_ISO = ISO_VALUE_200;
 			current_EXP = EXPOSURE_TIME_1_50;
-			captureStillPictureLocked(current_ISO, current_EXP);
-		} else if (mRequestCounter.intValue() >= 101 && mRequestCounter.intValue() < 151) {
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed * 2 + 1) && mRequestCounter.intValue() < (imgNeed * 3 + 1)) {
 			current_ISO = ISO_VALUE_1000;
 			current_EXP = EXPOSURE_TIME_1_50;
-			captureStillPictureLocked(current_ISO, current_EXP);
-		} else if (mRequestCounter.intValue() >= 151 && mRequestCounter.intValue() < 201) {
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed * 3 + 1) && mRequestCounter.intValue() < (imgNeed * 4 + 1)) {
 			current_ISO = ISO_VALUE_100;
 			current_EXP = EXPOSURE_TIME_1_10;
-			captureStillPictureLocked(current_ISO, current_EXP);
-		} else if (mRequestCounter.intValue() >= 201 && mRequestCounter.intValue() < 251) {
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed * 4 + 1) && mRequestCounter.intValue() < (imgNeed * 5 + 1)) {
 			current_ISO = ISO_VALUE_200;
 			current_EXP = EXPOSURE_TIME_1_10;
-			captureStillPictureLocked(current_ISO, current_EXP);
-		} else if (mRequestCounter.intValue() >= 251 && mRequestCounter.intValue() < 301) {
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed * 5 + 1) && mRequestCounter.intValue() < (imgNeed * 6 + 1)) {
 			current_ISO = ISO_VALUE_1000;
 			current_EXP = EXPOSURE_TIME_1_10;
-			captureStillPictureLocked(current_ISO, current_EXP);
-		} else if (mRequestCounter.intValue() >= 301 && mRequestCounter.intValue() < 351) {
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed * 6 + 1) && mRequestCounter.intValue() < (imgNeed * 7 + 1)) {
 			current_ISO = ISO_VALUE_100;
 			current_EXP = EXPOSURE_TIME_1_200;
-			captureStillPictureLocked(current_ISO, current_EXP);
-		} else if (mRequestCounter.intValue() >= 351 && mRequestCounter.intValue() < 401) {
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed * 7 + 1) && mRequestCounter.intValue() < (imgNeed * 8 + 1)) {
 			current_ISO = ISO_VALUE_200;
 			current_EXP = EXPOSURE_TIME_1_200;
-			captureStillPictureLocked(current_ISO, current_EXP);
-		} else if (mRequestCounter.intValue() >= 401 && mRequestCounter.intValue() < 451) {
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed * 8 + 1) && mRequestCounter.intValue() < (imgNeed * 9 + 1)) {
 			current_ISO = ISO_VALUE_1000;
 			current_EXP = EXPOSURE_TIME_1_200;
-			captureStillPictureLocked(current_ISO, current_EXP);
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed * 9 + 1) && mRequestCounter.intValue() < (imgNeed * 10 + 1)) {
+			captureStillPictureLocked(0, 0, true);
 		}
+		
 	}
 	
 	private void manualSet() {
@@ -1618,11 +1631,11 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			new Handler().postDelayed(new Runnable() {
 				@Override
 				public void run() {
-					captureStillPictureLocked(current_ISO, current_EXP);
+					captureStillPictureLocked(current_ISO, current_EXP, true);
 				}
 			}, 5000);
 		} else {
-			captureStillPictureLocked(current_ISO, current_EXP);
+			captureStillPictureLocked(current_ISO, current_EXP, true);
 		}
 	}
 	

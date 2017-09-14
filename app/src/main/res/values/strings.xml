@@ -1,9 +1,9 @@
 <resources>
     <string name="app_name">StegCam</string>
-    <string name="picture">Picture</string>
+    <string name="picture">Take Picture</string>
     <string name="request_permission">Sorry! You cannot use this app without camera permission.</string>
     <string name="clear">Clear</string>
-    <string name="enterNumP">Total photo needed</string>
+    <string name="enterNumP">Photos for each setting</string>
     <string name="totC">Total counter </string>
     <string name="currC">Current session counter </string>
     <string name="alert">Alert!!</string>
