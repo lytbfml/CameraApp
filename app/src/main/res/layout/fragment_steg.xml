@@ -10,10 +10,99 @@
     <!--android:layout_alignParentStart="true"-->
     <!--android:layout_alignParentTop="true"/>-->
 
+    <TextView android:id="@+id/textView3"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content"
+              android:text="@string/totC" />
+
+    <TextView android:id="@+id/textView4"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content"
+              android:layout_toEndOf="@+id/textView3"/>
+
+    <TextView android:id="@+id/textView2"
+              android:layout_width="wrap_content"
+              android:layout_height="wrap_content"
+              android:text="@string/currC"
+              android:layout_below="@+id/textView3"/>
+
     <TextView android:id="@+id/textView"
               android:layout_width="wrap_content"
-              android:layout_height="wrap_content"/>
+              android:layout_height="wrap_content"
+              android:layout_toEndOf="@+id/textView2"
+              android:layout_below="@+id/textView3"/>
 
+    <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:ems="10"
+            android:layout_marginTop="64dp"
+            android:id="@+id/editText2"
+            android:layout_below="@+id/textView2"
+            android:layout_centerHorizontal="true"
+            android:hint="@string/enterISO"/>
+
+    <LinearLayout android:layout_below="@+id/editText2"
+                  android:layout_height="wrap_content"
+                  android:layout_width="wrap_content"
+                  android:id="@+id/linearL" android:orientation="horizontal"
+                  android:layout_centerHorizontal="true">
+
+        <EditText
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:ems="10"
+                android:layout_marginTop="30dp"
+                android:id="@+id/editText3"
+                android:hint="@string/enterEXP"/>
+
+        <EditText
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:ems="10"
+                android:layout_marginTop="30dp"
+                android:id="@+id/editText4"
+                android:hint="@string/enterEXP2"/>
+
+    </LinearLayout>
+
+
+
+
+    <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:ems="10"
+            android:layout_marginTop="30dp"
+            android:id="@+id/editText"
+            android:layout_below="@+id/linearL"
+            android:layout_centerHorizontal="true"
+            android:hint="@string/enterNumP"/>
+
+    <ProgressBar
+            android:id="@+id/bar1"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="300dp"
+            android:layout_height="8dp"
+            android:layout_below="@+id/editText"
+            android:layout_marginTop="20dp"
+            android:layout_centerInParent="true"
+            android:visibility="gone"/>
+
+    <ProgressBar
+            android:id="@+id/bar2"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentTop="true"
+            android:layout_marginTop="0dp"
+            android:layout_marginRight="0dp"/>
 
     <LinearLayout
             android:layout_width="match_parent"
@@ -39,6 +128,5 @@
 
 
     </LinearLayout>
-
 
 </RelativeLayout>
