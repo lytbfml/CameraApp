@@ -9,7 +9,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
-import android.hardware.SensorManager;
 import android.hardware.camera2.*;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
@@ -17,7 +16,6 @@ import android.media.ImageReader;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.*;
-import android.support.annotation.IntDef;
 import android.support.annotation.NonNull;
 import android.support.v13.app.FragmentCompat;
 import android.support.v4.app.ActivityCompat;
@@ -26,21 +24,20 @@ import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.*;
-import android.widget.EditText;
-import android.widget.ProgressBar;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.view.animation.AnimationUtils;
+import android.widget.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static android.content.Context.LAYOUT_INFLATER_SERVICE;
 
 /**
  * Created by Yangxiao on 8/30/2017.
@@ -195,6 +192,14 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	private EditText manualExp;
 	
 	private EditText manualExp2;
+	
+	private PopupWindow mPopWindow;
+	
+	private Context mContext;
+	
+	private RelativeLayout mRelativeLayout;
+	
+	private Button setButton;
 	
 	private boolean manSet = false;
 	
@@ -375,12 +380,12 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		                             long timestamp, long frameNumber) {
 			int count = mRequestCounter.intValue();
 			long expT = (current_EXP / 1000000);
-			String expS = Long.toString(expT);
+			String expS = current_EXP == 0 ? "Auto" : Long.toString(expT);
 			
 			String currentDateTime = generateTimestamp();
 			File rawFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
-					File.separator + "StegoCam" + File.separator + "RAW_" + count + "_" + "I" + current_ISO + "E" +
-					expS + "_" + currentDateTime + "" + ".dng");
+					File.separator + "StegoCam" + File.separator + "RAW_" + count + "_" +
+					"I" + (current_ISO == 0 ? "Auto" : current_ISO) + "E" + expS + "_" + currentDateTime + "" + ".dng");
 			
 			//			File jpegFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
 			//					File.separator + "StegoCam" + File.separator + "JPEG_" + "I" + current_ISO + "E" + current_EXP/1000000 + "_"
@@ -413,6 +418,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			//			ImageSaver.ImageSaverBuilder jpegBuilder;
 			ImageSaver.ImageSaverBuilder rawBuilder;
 			StringBuilder sb = new StringBuilder();
+			
 			
 			// Look up the ImageSaverBuilder for this request and update it with the CaptureResult
 			synchronized (mCameraStateLock) {
@@ -484,8 +490,15 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	@Override
 	public void onViewCreated(final View view, Bundle savedInstanceState) {
 		Log.d(TAG, "onViewCreated()");
+		
+		mContext = getContext();
+		mRelativeLayout = view.findViewById(R.id.mainRelLayout);
+		setButton = view.findViewById(R.id.setBtn);
+		
+		view.findViewById(R.id.setBtn).setOnClickListener(this);
 		view.findViewById(R.id.picture).setOnClickListener(this);
 		view.findViewById(R.id.clearCounter).setOnClickListener(this);
+		
 		et = view.findViewById(R.id.editText);
 		tv_current = view.findViewById(R.id.textView);
 		tv_total = view.findViewById(R.id.textView4);
@@ -495,6 +508,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		manualISO = view.findViewById(R.id.editText2);
 		manualExp = view.findViewById(R.id.editText3);
 		manualExp2 = view.findViewById(R.id.editText4);
+		
+		
 	}
 	
 	@Override
@@ -548,6 +563,44 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			}
 			case R.id.clearCounter: {
 				cleanCounter();
+				break;
+			}
+			case R.id.setBtn: {
+				
+				// Initialize a new instance of LayoutInflater service
+				LayoutInflater inflater = (LayoutInflater) mContext.getSystemService(LAYOUT_INFLATER_SERVICE);
+						
+				// Inflate the custom layout/view
+				View popView = inflater.inflate(R.layout.popupw, null);
+				
+				popView.setAnimation(AnimationUtils.loadAnimation(getActivity(), R.anim.pop_show));
+				
+				// Initialize a new instance of popup window
+				mPopWindow = new PopupWindow(
+						popView,
+						ViewGroup.LayoutParams.WRAP_CONTENT,
+						ViewGroup.LayoutParams.WRAP_CONTENT
+				);
+				mPopWindow.setFocusable(true);
+				mPopWindow.update();
+				mPopWindow.setAnimationStyle(R.style.Animation);
+				popView.setElevation(5.0f);
+				
+				// Get a reference for the custom view close button
+				ImageButton closeButton = popView.findViewById(R.id.pop_close);
+				
+				// Set a click listener for the popup window close button
+				closeButton.setOnClickListener(new View.OnClickListener() {
+					@Override
+					public void onClick(View view) {
+						// Dismiss the popup window
+						mPopWindow.dismiss();
+					}
+				});
+
+				// Finally, show the popup window at the center location of root relative layout
+				mPopWindow.showAtLocation(mRelativeLayout, Gravity.CENTER, 0, 0);
+				
 				break;
 			}
 		}
@@ -954,7 +1007,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			Log.d(TAG, "Request counter: " + mRequestCounter.intValue());
 			captureBuilder.setTag(mRequestCounter.getAndIncrement());
 			
-			CaptureRequest request = captureBuilder.build();
+			final CaptureRequest request = captureBuilder.build();
 			
 			// Create an ImageSaverBuilder in which to collect results, and add it to the queue
 			// of active requests.
@@ -1015,10 +1068,15 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	 */
 	private void finishedCaptureLocked() {
 		updateCounter();
-		if (mRequestCounter.intValue() < (imgNeed * 10)) {
-			new Handler().postDelayed(this::takePicture, 500);
+		if (mRequestCounter.intValue() < (imgNeed * 10 + 1)) {
+			new Handler().postDelayed(new Runnable() {
+				@Override
+				public void run() {
+					takePicture();
+				}
+			}, 500);
 		}
-		if (mRequestCounter.intValue() >= (imgNeed * 10)) {
+		if (mRequestCounter.intValue() >= (imgNeed * 10 + 1)) {
 			detachProcessBar();
 			AlertDialogFragment.buildAlertDialog("TASK FINISHED").show(getFragmentManager(), "dialog");
 		}
@@ -1577,7 +1635,12 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			bar1.setMax(imgNeed * 10);
 			bar2.setVisibility(View.VISIBLE);
 			
-			new Handler().postDelayed(() -> captureStillPictureLocked(current_ISO, current_EXP, true), 5000);
+			new Handler().postDelayed(new Runnable() {
+				@Override
+				public void run() {
+					captureStillPictureLocked(current_ISO, current_EXP, true);
+				}
+			}, 5000);
 		}
 		
 		if (mRequestCounter.intValue() < (imgNeed + 1) && mRequestCounter.intValue() != 0) {
@@ -1617,7 +1680,9 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			current_EXP = EXPOSURE_TIME_1_200;
 			captureStillPictureLocked(current_ISO, current_EXP, true);
 		} else if (mRequestCounter.intValue() >= (imgNeed * 9 + 1) && mRequestCounter.intValue() < (imgNeed * 10 + 1)) {
-			captureStillPictureLocked(0, 0, true);
+			current_ISO = 0;
+			current_EXP = 0;
+			captureStillPictureLocked(0, 0, false);
 		}
 		
 	}
@@ -1638,5 +1703,4 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			captureStillPictureLocked(current_ISO, current_EXP, true);
 		}
 	}
-	
 }

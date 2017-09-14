@@ -12,6 +12,7 @@
     <string name="enterEXP">Exposure</string>
     <string name="enterEXP2">Value</string>
     <string name="fraction">/</string>
+    <string name="set">Set</string>
 
 
     <string-array name="iso_Value">
