@@ -47,6 +47,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	
 	int imgNeed = 1;
 	
+	String mScenePath;
+	
 	private static final String SHARED_PREFERENCES = "com.stegCam.yangxiao";
 	private static final String TOTAL_IMAGECOUNTER = "totalImageCounter";
 	SharedPreferences prefs;
@@ -381,10 +383,21 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			int count = mRequestCounter.intValue();
 			long expT = (current_EXP / 1000000);
 			String expS = current_EXP == 0 ? "Auto" : Long.toString(expT);
-			
 			String currentDateTime = generateTimestamp();
+			
+			if (mRequestCounter.intValue() == 1) {
+				mScenePath = "Scene_" + generateTimestampWithMd();
+				File fileT = new File(
+						Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
+								File.separator + "StegoCam" + File.separator + mScenePath);
+				if (!fileT.exists()) {
+					fileT.mkdir();
+				}
+			}
+			
+			
 			File rawFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
-					File.separator + "StegoCam" + File.separator + "RAW_" + count + "_" +
+					File.separator + "StegoCam" + File.separator + mScenePath + File.separator + "RAW_" + count + "_" +
 					"I" + (current_ISO == 0 ? "Auto" : current_ISO) + "E" + expS + "_" + currentDateTime + "" + ".dng");
 			
 			//			File jpegFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
@@ -569,7 +582,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				
 				// Initialize a new instance of LayoutInflater service
 				LayoutInflater inflater = (LayoutInflater) mContext.getSystemService(LAYOUT_INFLATER_SERVICE);
-						
+				
 				// Inflate the custom layout/view
 				View popView = inflater.inflate(R.layout.popupw, null);
 				
@@ -597,7 +610,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 						mPopWindow.dismiss();
 					}
 				});
-
+				
 				// Finally, show the popup window at the center location of root relative layout
 				mPopWindow.showAtLocation(mRelativeLayout, Gravity.CENTER, 0, 0);
 				
@@ -922,18 +935,18 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 					imgNeed = x;
 				}
 				
-//				String miso = manualISO.getText().toString().trim();
-//				String mexp = manualExp.getText().toString().trim();
-//				String mexp2 = manualExp2.getText().toString().trim();
-//				if (!(miso.isEmpty() || mexp.isEmpty() || mexp2.isEmpty())) {
-//					manSet = true;
-//					current_ISO = Integer.parseInt(manualISO.getText().toString());
-//					long manExp = Long.parseLong(manualExp.getText().toString());
-//					long manExp2 = Long.parseLong(manualExp2.getText().toString());
-//
-//					current_EXP = (manExp * 1000000000 / manExp2);
-//					Log.d(TAG, "Manual settings!\n" + "ISO: " + current_ISO + ", " + "EXP: " + Long.toString(current_EXP));
-//				}
+				//				String miso = manualISO.getText().toString().trim();
+				//				String mexp = manualExp.getText().toString().trim();
+				//				String mexp2 = manualExp2.getText().toString().trim();
+				//				if (!(miso.isEmpty() || mexp.isEmpty() || mexp2.isEmpty())) {
+				//					manSet = true;
+				//					current_ISO = Integer.parseInt(manualISO.getText().toString());
+				//					long manExp = Long.parseLong(manualExp.getText().toString());
+				//					long manExp2 = Long.parseLong(manualExp2.getText().toString());
+				//
+				//					current_EXP = (manExp * 1000000000 / manExp2);
+				//					Log.d(TAG, "Manual settings!\n" + "ISO: " + current_ISO + ", " + "EXP: " + Long.toString(current_EXP));
+				//				}
 			}
 			
 			// Update state machine to wait for auto-focus, auto-exposure, and auto-white-balance (aka. "3A") to converge.
@@ -1535,6 +1548,16 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	 */
 	private static String generateTimestamp() {
 		SimpleDateFormat sdf = new SimpleDateFormat("HH_mm_ss_SSS", Locale.US);
+		return sdf.format(new Date());
+	}
+	
+	/**
+	 * Generate a string containing a formatted timestamp with the current date and time.
+	 *
+	 * @return a {@link String} representing a time.
+	 */
+	private static String generateTimestampWithMd() {
+		SimpleDateFormat sdf = new SimpleDateFormat("MM_dd_HH_mm_ss_SSS", Locale.US);
 		return sdf.format(new Date());
 	}
 	
