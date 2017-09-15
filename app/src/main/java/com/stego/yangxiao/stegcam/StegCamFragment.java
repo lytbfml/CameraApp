@@ -47,8 +47,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	
 	int imgNeed = 1;
 	
-	String mScenePath;
-	
 	private static final String SHARED_PREFERENCES = "com.stegCam.yangxiao";
 	private static final String TOTAL_IMAGECOUNTER = "totalImageCounter";
 	SharedPreferences prefs;
@@ -188,20 +186,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	private TextView tv_total;
 	
 	private EditText et;
-	
-	private EditText manualISO;
-	
-	private EditText manualExp;
-	
-	private EditText manualExp2;
-	
-	private PopupWindow mPopWindow;
-	
-	private Context mContext;
-	
-	private RelativeLayout mRelativeLayout;
-	
-	private Button setButton;
 	
 	private boolean manSet = false;
 	
@@ -381,45 +365,37 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		public void onCaptureStarted(CameraCaptureSession session, CaptureRequest request,
 		                             long timestamp, long frameNumber) {
 			int count = mRequestCounter.intValue();
-			long expT = (current_EXP / 1000000);
-			String expS = current_EXP == 0 ? "Auto" : Long.toString(expT);
-			String currentDateTime = generateTimestamp();
+			long expTime = (current_EXP / 1000000);
+			String expString = (current_EXP == 0 ? "Auto" : Long.toString(expTime));
+			String isoString = (current_ISO == 0 ? "Auto" : Integer.toString(current_ISO));
 			
-			if (mRequestCounter.intValue() == 1) {
-				mScenePath = "Scene_" + generateTimestampWithMd();
-				File fileT = new File(
-						Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
-								File.separator + "StegoCam" + File.separator + mScenePath);
-				if (!fileT.exists()) {
-					fileT.mkdir();
-				}
+			String currentDateTime = generateTimestampWithMd();
+			
+			File fileTemp = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
+					File.separator + "StegoCam" +
+					File.separator + "I" + isoString + "E" + expString +
+					File.separator);
+			if (!fileTemp.exists()) {
+				fileTemp.mkdir();
 			}
 			
-			
 			File rawFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
-					File.separator + "StegoCam" + File.separator + mScenePath + File.separator + "RAW_" + count + "_" +
-					"I" + (current_ISO == 0 ? "Auto" : current_ISO) + "E" + expS + "_" + currentDateTime + "" + ".dng");
+					File.separator + "StegoCam" +
+					File.separator + "I" + isoString + "E" + expString +
+					File.separator + "RAW_" + count + "_" + currentDateTime + "" + ".dng");
 			
-			//			File jpegFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
-			//					File.separator + "StegoCam" + File.separator + "JPEG_" + "I" + current_ISO + "E" + current_EXP/1000000 + "_"
-			//					+ currentDateTime + ".jpg");
-			
-			Log.d(TAG, "Saving file------------The current ISO is: " + current_ISO);
-			Log.d(TAG, "Saving file------------The current EXP is: " + Long.toString(current_EXP / 1000000));
+			Log.d(TAG, "Saving file------------The current ISO is: " + isoString);
+			Log.d(TAG, "Saving file------------The current EXP is: " + expString);
 			
 			
 			// Look up the ImageSaverBuilder for this request and update it with the file name
 			// based on the capture start time.
-			ImageSaver.ImageSaverBuilder jpegBuilder;
 			ImageSaver.ImageSaverBuilder rawBuilder;
 			int requestId = (int) request.getTag();
 			synchronized (mCameraStateLock) {
-				//				jpegBuilder = mJpegResultQueue.get(requestId);
 				rawBuilder = mRawResultQueue.get(requestId);
 			}
 			
-			//			if (jpegBuilder != null)
-			//				jpegBuilder.setFile(jpegFile);
 			if (rawBuilder != null)
 				rawBuilder.setFile(rawFile);
 		}
@@ -428,31 +404,21 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request,
 		                               TotalCaptureResult result) {
 			int requestId = (int) request.getTag();
-			//			ImageSaver.ImageSaverBuilder jpegBuilder;
 			ImageSaver.ImageSaverBuilder rawBuilder;
 			StringBuilder sb = new StringBuilder();
 			
 			
 			// Look up the ImageSaverBuilder for this request and update it with the CaptureResult
 			synchronized (mCameraStateLock) {
-				//				jpegBuilder = mJpegResultQueue.get(requestId);
 				rawBuilder = mRawResultQueue.get(requestId);
 				
-				//				if (jpegBuilder != null) {
-				//					jpegBuilder.setResult(result);
-				//					sb.append("Saving JPEG as: ");
-				//					sb.append(jpegBuilder.getSaveLocation());
-				//				}
 				if (rawBuilder != null) {
 					rawBuilder.setResult(result);
-					//					if (jpegBuilder != null)
-					//						sb.append(", ");
 					sb.append("Saving RAW as: ");
 					sb.append(rawBuilder.getSaveLocation());
 				}
 				
 				// If we have all the results necessary, save the image to a file in the background.
-				//				handleCompletionLocked(requestId, jpegBuilder, mJpegResultQueue);
 				handleCompletionLocked(requestId, rawBuilder, mRawResultQueue);
 				
 				finishedCaptureLocked();
@@ -504,10 +470,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	public void onViewCreated(final View view, Bundle savedInstanceState) {
 		Log.d(TAG, "onViewCreated()");
 		
-		mContext = getContext();
-		mRelativeLayout = view.findViewById(R.id.mainRelLayout);
-		setButton = view.findViewById(R.id.setBtn);
-		
 		view.findViewById(R.id.setBtn).setOnClickListener(this);
 		view.findViewById(R.id.picture).setOnClickListener(this);
 		view.findViewById(R.id.clearCounter).setOnClickListener(this);
@@ -517,12 +479,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		tv_total = view.findViewById(R.id.textView4);
 		bar1 = view.findViewById(R.id.bar1);
 		bar2 = view.findViewById(R.id.bar2);
-		
-		manualISO = view.findViewById(R.id.editText2);
-		manualExp = view.findViewById(R.id.editText3);
-		manualExp2 = view.findViewById(R.id.editText4);
-		
-		
 	}
 	
 	@Override
@@ -576,44 +532,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			}
 			case R.id.clearCounter: {
 				cleanCounter();
-				break;
-			}
-			case R.id.setBtn: {
-				
-				// Initialize a new instance of LayoutInflater service
-				LayoutInflater inflater = (LayoutInflater) mContext.getSystemService(LAYOUT_INFLATER_SERVICE);
-				
-				// Inflate the custom layout/view
-				View popView = inflater.inflate(R.layout.popupw, null);
-				
-				popView.setAnimation(AnimationUtils.loadAnimation(getActivity(), R.anim.pop_show));
-				
-				// Initialize a new instance of popup window
-				mPopWindow = new PopupWindow(
-						popView,
-						ViewGroup.LayoutParams.WRAP_CONTENT,
-						ViewGroup.LayoutParams.WRAP_CONTENT
-				);
-				mPopWindow.setFocusable(true);
-				mPopWindow.update();
-				mPopWindow.setAnimationStyle(R.style.Animation);
-				popView.setElevation(5.0f);
-				
-				// Get a reference for the custom view close button
-				ImageButton closeButton = popView.findViewById(R.id.pop_close);
-				
-				// Set a click listener for the popup window close button
-				closeButton.setOnClickListener(new View.OnClickListener() {
-					@Override
-					public void onClick(View view) {
-						// Dismiss the popup window
-						mPopWindow.dismiss();
-					}
-				});
-				
-				// Finally, show the popup window at the center location of root relative layout
-				mPopWindow.showAtLocation(mRelativeLayout, Gravity.CENTER, 0, 0);
-				
 				break;
 			}
 		}
