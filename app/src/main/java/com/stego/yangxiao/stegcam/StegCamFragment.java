@@ -185,8 +185,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	
 	private TextView tv_total;
 	
-	private EditText et;
-	
 	private boolean manSet = false;
 	
 	private ProgressBar bar1 = null;
@@ -255,20 +253,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	
 	/**
 	 * This a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
-	 * JPEG image is ready to be saved.
-	 */
-	//	private final ImageReader.OnImageAvailableListener mOnJpegImageAvailableListener
-	//			= new ImageReader.OnImageAvailableListener() {
-	//
-	//		@Override
-	//		public void onImageAvailable(ImageReader reader) {
-	//			dequeueAndSaveImage(mJpegResultQueue, mJpegImageReader);
-	//		}
-	//
-	//	};
-	
-	/**
-	 * This a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
 	 * RAW image is ready to be saved.
 	 */
 	private final ImageReader.OnImageAvailableListener mOnRawImageAvailableListener
@@ -279,79 +263,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			dequeueAndSaveImage(mRawResultQueue, mRawImageReader);
 		}
 		
-	};
-	
-	/**
-	 * A {@link CameraCaptureSession.CaptureCallback} that handles events for the preview and
-	 * pre-capture sequence.
-	 */
-	private CameraCaptureSession.CaptureCallback mPreCaptureCallback = new CameraCaptureSession.CaptureCallback() {
-		
-		private void process(CaptureResult result) {
-			synchronized (mCameraStateLock) {
-				switch (mState) {
-					case STATE_PREVIEW: {
-						// We have nothing to do when the camera preview is running normally.
-						break;
-					}
-					case STATE_WAITING_FOR_3A_CONVERGENCE: {
-						boolean readyToCapture = true;
-						
-						if (!mNoAFRun) {
-							Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
-							if (afState == null) {
-								break;
-							}
-							
-							// If auto-focus has reached locked state, we are ready to capture
-							readyToCapture =
-									(afState == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED ||
-											afState == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED);
-						}
-						
-						// If we are running on an non-legacy device, we should also wait until
-						// auto-exposure and auto-white-balance have converged as well before
-						// taking a picture.
-						Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-						Integer awbState = result.get(CaptureResult.CONTROL_AWB_STATE);
-						if (aeState == null || awbState == null) {
-							break;
-						}
-						
-						readyToCapture = readyToCapture &&
-								aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED &&
-								awbState == CaptureResult.CONTROL_AWB_STATE_CONVERGED;
-						
-						if (!readyToCapture && hitTimeoutLocked()) {
-							Log.w(TAG, "Timed out waiting for pre-capture sequence to complete.");
-							readyToCapture = true;
-						}
-						
-						if (readyToCapture && mPendingUserCaptures > 0) {
-							// Capture once for each user tap of the "Picture" button.
-							while (mPendingUserCaptures > 0) {
-								captureStillPictureLocked(0, 0, false);
-								mPendingUserCaptures--;
-							}
-							// After this, the camera will go back to the normal state of preview.
-							mState = STATE_PREVIEW;
-						}
-					}
-				}
-			}
-		}
-		
-		@Override
-		public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request,
-		                                CaptureResult partialResult) {
-			process(partialResult);
-		}
-		
-		@Override
-		public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request,
-		                               TotalCaptureResult result) {
-			process(result);
-		}
 	};
 	
 	
@@ -474,7 +385,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		view.findViewById(R.id.picture).setOnClickListener(this);
 		view.findViewById(R.id.clearCounter).setOnClickListener(this);
 		
-		et = view.findViewById(R.id.editText);
 		tv_current = view.findViewById(R.id.textView);
 		tv_total = view.findViewById(R.id.textView4);
 		bar1 = view.findViewById(R.id.bar1);
@@ -760,16 +670,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	
 	
 	/**
-	 * Creates a new {@link CameraCaptureSession} for camera preview.
-	 * <p/>
-	 * Call this only with {@link #mCameraStateLock} held.
-	 */
-	private void createCameraPreviewSessionLocked() {
-		
-	}
-	
-	
-	/**
 	 * Configure the given {@link CaptureRequest.Builder} to use auto-focus, auto-exposure, and
 	 * auto-white-balance controls if available.
 	 * <p/>
@@ -845,28 +745,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				return;
 			}
 			
-			if (mRequestCounter.intValue() == 0) {
-				//Check if user input number of photos for each setting.
-				String mImgNeed = et.getText().toString().trim();
-				if (!mImgNeed.isEmpty()) {
-					int x = Integer.parseInt(et.getText().toString());
-					imgNeed = x;
-				}
-				
-				//				String miso = manualISO.getText().toString().trim();
-				//				String mexp = manualExp.getText().toString().trim();
-				//				String mexp2 = manualExp2.getText().toString().trim();
-				//				if (!(miso.isEmpty() || mexp.isEmpty() || mexp2.isEmpty())) {
-				//					manSet = true;
-				//					current_ISO = Integer.parseInt(manualISO.getText().toString());
-				//					long manExp = Long.parseLong(manualExp.getText().toString());
-				//					long manExp2 = Long.parseLong(manualExp2.getText().toString());
-				//
-				//					current_EXP = (manExp * 1000000000 / manExp2);
-				//					Log.d(TAG, "Manual settings!\n" + "ISO: " + current_ISO + ", " + "EXP: " + Long.toString(current_EXP));
-				//				}
-			}
-			
 			// Update state machine to wait for auto-focus, auto-exposure, and auto-white-balance (aka. "3A") to converge.
 			mState = STATE_STILLCAPTURING;
 			
@@ -874,11 +752,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				// Capture once for each user tap of the "Picture" button.
 				while (mPendingUserCaptures > 0) {
 					
-					if (manSet) {
-						manualSet();
-					} else {
-						nineDataSet();
-					}
+					nineDataSet();
 					
 					//Set first progress bar value
 					bar1.setProgress(mRequestCounter.intValue());
@@ -1573,7 +1447,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			current_EXP = EXPOSURE_TIME_1_50;
 			
 			bar1.setVisibility(View.VISIBLE);
-			bar1.setMax(imgNeed * 10);
+			bar1.setMax(imgNeed * 10 + 1);
 			bar2.setVisibility(View.VISIBLE);
 			
 			new Handler().postDelayed(new Runnable() {
@@ -1628,20 +1502,4 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		
 	}
 	
-	private void manualSet() {
-		if (mRequestCounter.intValue() == 0) {
-			bar1.setVisibility(View.VISIBLE);
-			bar1.setMax(imgNeed);
-			bar2.setVisibility(View.VISIBLE);
-			
-			new Handler().postDelayed(new Runnable() {
-				@Override
-				public void run() {
-					captureStillPictureLocked(current_ISO, current_EXP, true);
-				}
-			}, 5000);
-		} else {
-			captureStillPictureLocked(current_ISO, current_EXP, true);
-		}
-	}
 }
