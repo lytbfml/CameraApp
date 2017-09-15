@@ -24,7 +24,6 @@ import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.*;
-import android.view.animation.AnimationUtils;
 import android.widget.*;
 
 import java.io.File;
@@ -36,8 +35,6 @@ import java.util.*;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static android.content.Context.LAYOUT_INFLATER_SERVICE;
 
 /**
  * Created by Yangxiao on 8/30/2017.
@@ -124,13 +121,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	private static final int STATE_STILLCAPTURING = 4;
 	
 	private int mState = STATE_CLOSED;
-	
-	/**
-	 * Timer to use with pre-capture sequence to ensure a timely capture if 3A convergence is
-	 * taking too long.
-	 */
-	private long mCaptureTimer;
-	
 	
 	private String mCameraId;
 	
@@ -297,7 +287,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			
 			Log.d(TAG, "Saving file------------The current ISO is: " + isoString);
 			Log.d(TAG, "Saving file------------The current EXP is: " + expString);
-			
 			
 			// Look up the ImageSaverBuilder for this request and update it with the file name
 			// based on the capture start time.
@@ -802,7 +791,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				setup3AControlsLocked(captureBuilder);
 			}
 			
-			
 			// Set orientation.
 			int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
 			
@@ -896,27 +884,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				bar2.setVisibility(View.GONE);
 			}
 		});
-	}
-	
-	
-	/**
-	 * Start the timer for the pre-capture sequence.
-	 * <p/>
-	 * Call this only with {@link #mCameraStateLock} held.
-	 */
-	private void startTimerLocked() {
-		mCaptureTimer = SystemClock.elapsedRealtime();
-	}
-	
-	/**
-	 * Check if the timer for the pre-capture sequence has been hit.
-	 * <p/>
-	 * Call this only with {@link #mCameraStateLock} held.
-	 *
-	 * @return true if the timeout occurred.
-	 */
-	private boolean hitTimeoutLocked() {
-		return (SystemClock.elapsedRealtime() - mCaptureTimer) > PRECAPTURE_TIMEOUT_MS;
 	}
 	
 	
