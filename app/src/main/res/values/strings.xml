@@ -1,7 +1,30 @@
 <resources>
     <string name="app_name">StegCam</string>
-    <string name="picture">Picture</string>
+    <string name="picture">Take Picture</string>
     <string name="request_permission">Sorry! You cannot use this app without camera permission.</string>
     <string name="clear">Clear</string>
+    <string name="enterNumP">Photos for each setting</string>
+    <string name="totC">Total counter </string>
+    <string name="currC">Current session counter </string>
+    <string name="alert">Alert!!</string>
+    <string name="cancel">Cancel</string>
+    <string name="enterISO">ISO Value</string>
+    <string name="enterEXP">Exposure</string>
+    <string name="enterEXP2">Value</string>
+    <string name="fraction">/</string>
+    <string name="set">Set</string>
+
+
+    <string-array name="iso_Value">
+        <item>100</item>
+        <item>200</item>
+        <item>1000</item>
+    </string-array>
+
+    <string-array name="exp">
+        <item>100000000</item>
+        <item>20000000</item>
+        <item>5000000</item>
+    </string-array>
 
 </resources>
