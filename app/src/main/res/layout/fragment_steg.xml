@@ -37,20 +37,11 @@
             android:layout_height="wrap_content"
             android:inputType="number"
             android:ems="10"
-            android:layout_marginTop="65dp"
+            android:layout_marginTop="100dp"
             android:layout_below="@+id/textView2"
             android:id="@+id/editText"
             android:layout_centerHorizontal="true"
             android:hint="@string/enterNumP"/>
-
-    <Button
-            android:id="@+id/setBtn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_centerInParent="true"
-            android:layout_below="@+id/editText"
-            android:layout_marginTop="60dp"
-            android:text="@string/set"/>
 
     <ProgressBar
             android:id="@+id/bar1"
