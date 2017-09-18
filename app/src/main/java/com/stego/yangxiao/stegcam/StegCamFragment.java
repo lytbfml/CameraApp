@@ -269,7 +269,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			long expTime = (current_EXP / 1000000);
 			String expString = (current_EXP == 0 ? "Auto" : Long.toString(expTime));
 			String isoString = (current_ISO == 0 ? "Auto" : Integer.toString(current_ISO));
-			
 			String currentDateTime = generateTimestampWithMd();
 			
 			File fileTemp = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
@@ -280,10 +279,12 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				fileTemp.mkdir();
 			}
 			
-			File rawFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
-					File.separator + "StegoCam" +
-					File.separator + "I" + isoString + "E" + expString +
-					File.separator + "RAW_" + count + "_" + currentDateTime + "" + ".dng");
+			File rawFile = generateFileName(isoString, expString, fileTemp);
+			
+//			File rawFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
+//					File.separator + "StegoCam" +
+//					File.separator + "I" + isoString + "E" + expString +
+//					File.separator + "RAW_" + count + ".dng");
 			
 			Log.d(TAG, "Saving file------------The current ISO is: " + isoString);
 			Log.d(TAG, "Saving file------------The current EXP is: " + expString);
@@ -370,7 +371,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	public void onViewCreated(final View view, Bundle savedInstanceState) {
 		Log.d(TAG, "onViewCreated()");
 		
-		view.findViewById(R.id.setBtn).setOnClickListener(this);
 		view.findViewById(R.id.picture).setOnClickListener(this);
 		view.findViewById(R.id.clearCounter).setOnClickListener(this);
 		
@@ -1318,6 +1318,27 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	private static String generateTimestampWithMd() {
 		SimpleDateFormat sdf = new SimpleDateFormat("MM_dd_HH_mm_ss_SSS", Locale.US);
 		return sdf.format(new Date());
+	}
+	
+	/**
+	 *
+	 */
+	private File generateFileName(String isoString, String expString, File dir) {
+		
+		int num = dir.listFiles().length + 1;
+		int numD = 4 - String.valueOf(num).length();
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < numD; i++) {
+			sb.append("0");
+		}
+		sb.append(num + "");
+		
+		File rawFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
+				File.separator + "StegoCam" +
+				File.separator + "I" + isoString + "E" + expString +
+				File.separator + "RAW_" + sb.toString() + ".dng");
+		
+		return rawFile;
 	}
 	
 	
