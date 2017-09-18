@@ -765,7 +765,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	 *
 	 * @param isoValue manual set iso
 	 * @param exp      manual set exp
-	 * @param manual   true if manual setting
+	 * @param manual   true if manual setting, otherwise, will use
+	 * {@link #setup3AControlsLocked(CaptureRequest.Builder captureBuilder)}
 	 */
 	private void captureStillPictureLocked(int isoValue, long exp, boolean manual) {
 		
@@ -844,9 +845,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 					}
 					, mBackgroundHandler
 			);
-			
 			//			mCaptureSession.capture(request, mCaptureCallback, mBackgroundHandler);
-			
 		} catch (CameraAccessException e) {
 			e.printStackTrace();
 		}
