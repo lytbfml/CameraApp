@@ -24,8 +24,10 @@ import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.*;
-import android.view.animation.AnimationUtils;
-import android.widget.*;
+import android.widget.EditText;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -1234,7 +1236,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		}
 	}
 	
-	
 	public static class AlertDialogFragment extends DialogFragment {
 		
 		private String mAlertMessage;
@@ -1404,12 +1405,31 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		}
 		sb.append(num + "");
 		
-		File rawFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
-				File.separator + "StegoCam" + File.separator + mScenePath + File.separator +
-				File.separator + "I" + isoString + "E" + expString +
-				File.separator + "RAW_" + sb.toString() + ".dng");
-		
-		return rawFile;
+		if (mRequestCounter.intValue() == 1)
+		{
+			File tempFile = new File(Environment.getExternalStoragePublicDirectory(Environment
+					.DIRECTORY_DCIM) +
+					File.separator + "StegoCam" + File.separator + "first");
+			if (!tempFile.exists())
+			{
+				tempFile.mkdir();
+			}
+			
+			File rawFile = new File(
+					Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
+							File.separator + "StegoCam" + File.separator + mScenePath +
+							File.separator + "first" +
+							File.separator + "RAW_" + sb.toString() + ".dng");
+			return rawFile;
+		} else
+		{
+			File rawFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
+					File.separator + "StegoCam" + File.separator + mScenePath + File.separator +
+					File.separator + "I" + isoString + "E" + expString +
+					File.separator + "RAW_" + sb.toString() + ".dng");
+			
+			return rawFile;
+		}
 	}
 	
 	
