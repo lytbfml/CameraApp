@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/CameraApp.iml" filepath="$PROJECT_DIR$/CameraApp.iml" />
+      <module fileurl="file://$PROJECT_DIR$/StegoCam.iml" filepath="$PROJECT_DIR$/StegoCam.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>
