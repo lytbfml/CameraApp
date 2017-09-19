@@ -125,6 +125,10 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	 */
 	private static final int STATE_STILLCAPTURING = 4;
 	
+	
+	private CaptureRequest.Builder mPreviewRequestBuilder;
+	
+	
 	private int mState = STATE_CLOSED;
 	
 	/**
@@ -279,6 +283,79 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		
 	};
 	
+	
+	/**
+	 * A {@link CameraCaptureSession.CaptureCallback} that handles events for the preview and
+	 * pre-capture sequence.
+	 */
+	private CameraCaptureSession.CaptureCallback mPreCaptureCallback = new CameraCaptureSession.CaptureCallback() {
+		
+		private void process(CaptureResult result) {
+			synchronized (mCameraStateLock) {
+				switch (mState) {
+					case STATE_PREVIEW: {
+						// We have nothing to do when the camera preview is running normally.
+						break;
+					}
+					case STATE_WAITING_FOR_3A_CONVERGENCE: {
+						boolean readyToCapture = true;
+						
+						if (!mNoAFRun) {
+							Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
+							if (afState == null) {
+								break;
+							}
+							
+							// If auto-focus has reached locked state, we are ready to capture
+							readyToCapture =
+									(afState == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED ||
+											afState == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED);
+						}
+						
+						// If we are running on an non-legacy device, we should also wait until
+						// auto-exposure and auto-white-balance have converged as well before
+						// taking a picture.
+						Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
+						Integer awbState = result.get(CaptureResult.CONTROL_AWB_STATE);
+						if (aeState == null || awbState == null) {
+							break;
+						}
+						
+						readyToCapture = readyToCapture &&
+								aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED &&
+								awbState == CaptureResult.CONTROL_AWB_STATE_CONVERGED;
+						
+						if (!readyToCapture && hitTimeoutLocked()) {
+							Log.w(TAG, "Timed out waiting for pre-capture sequence to complete.");
+							readyToCapture = true;
+						}
+						
+						if (readyToCapture && mPendingUserCaptures > 0) {
+							// Capture once for each user tap of the "Picture" button.
+							while (mPendingUserCaptures > 0) {
+								captureStillPictureLocked(0, 0, false);
+								mPendingUserCaptures--;
+							}
+							// After this, the camera will go back to the normal state of preview.
+							mState = STATE_PREVIEW;
+						}
+					}
+				}
+			}
+		}
+		
+		@Override
+		public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request,
+		                                CaptureResult partialResult) {
+			process(partialResult);
+		}
+		
+		@Override
+		public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request,
+		                               TotalCaptureResult result) {
+			process(result);
+		}
+	};
 	
 	
 	/**
@@ -695,7 +772,56 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	 * Call this only with {@link #mCameraStateLock} held.
 	 */
 	private void createCameraPreviewSessionLocked() {
-		
+		try {
+			SurfaceTexture texture = mTextureView.getSurfaceTexture();
+			// We configure the size of default buffer to be the size of camera preview we want.
+			texture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+			
+			// This is the output Surface we need to start preview.
+			Surface surface = new Surface(texture);
+			
+			// We set up a CaptureRequest.Builder with the output Surface.
+			mPreviewRequestBuilder
+					= mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+			mPreviewRequestBuilder.addTarget(surface);
+			
+			// Here, we create a CameraCaptureSession for camera preview.
+			mCameraDevice.createCaptureSession(Arrays.asList(surface,
+					mJpegImageReader.get().getSurface(),
+					mRawImageReader.get().getSurface()), new CameraCaptureSession.StateCallback() {
+						@Override
+						public void onConfigured(CameraCaptureSession cameraCaptureSession) {
+							synchronized (mCameraStateLock) {
+								// The camera is already closed
+								if (null == mCameraDevice) {
+									return;
+								}
+								
+								try {
+									setup3AControlsLocked(mPreviewRequestBuilder);
+									// Finally, we start displaying the camera preview.
+									cameraCaptureSession.setRepeatingRequest(
+											mPreviewRequestBuilder.build(),
+											mPreCaptureCallback, mBackgroundHandler);
+									mState = STATE_PREVIEW;
+								} catch (CameraAccessException | IllegalStateException e) {
+									e.printStackTrace();
+									return;
+								}
+								// When the session is ready, we start displaying the preview.
+								mCaptureSession = cameraCaptureSession;
+							}
+						}
+						
+						@Override
+						public void onConfigureFailed(CameraCaptureSession cameraCaptureSession) {
+							showToast("Failed to configure camera.");
+						}
+					}, mBackgroundHandler
+			);
+		} catch (CameraAccessException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	
@@ -885,7 +1011,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 								}
 								mCaptureSession = session;
 							}
-							
 						}
 						
 						@Override
