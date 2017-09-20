@@ -41,26 +41,26 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 
 public class StegCamFragment extends Fragment implements View.OnClickListener, FragmentCompat.OnRequestPermissionsResultCallback {
-	
+
 	int imgNeed = 1;
-	
+
 	private static final String SHARED_PREFERENCES = "com.stegCam.yangxiao";
 	private static final String TOTAL_IMAGECOUNTER = "totalImageCounter";
 	SharedPreferences prefs;
-	
+
 	/**
 	 * Conversion from screen rotation to JPEG orientation.
 	 */
 	private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
-	
+
 	static {
 		ORIENTATIONS.append(Surface.ROTATION_0, 0);
 		ORIENTATIONS.append(Surface.ROTATION_90, 90);
 		ORIENTATIONS.append(Surface.ROTATION_180, 180);
 		ORIENTATIONS.append(Surface.ROTATION_270, 270);
 	}
-	
-	
+
+
 	/**
 	 * Iso value
 	 * 100, 200, 1000
@@ -79,80 +79,80 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	private static final long EXPOSURE_TIME_1_50 = 20000000;
 	private static final long EXPOSURE_TIME_1_200 = 5000000;
 	private long current_EXP;
-	
+
 	/**
 	 * Request code for camera permissions.
 	 */
 	private static final int REQUEST_CAMERA_PERMISSIONS = 200;
-	
+
 	private static final String[] CAMERA_PERMISSIONS = {
 			Manifest.permission.CAMERA,
 			Manifest.permission.READ_EXTERNAL_STORAGE,
 			Manifest.permission.WRITE_EXTERNAL_STORAGE,
 	};
-	
+
 	private static final long PRECAPTURE_TIMEOUT_MS = 1000;
-	
+
 	private static final String TAG = "StegCam";
-	
+
 	/**
 	 * Camera state: Device is closed.
 	 */
 	private static final int STATE_CLOSED = 0;
-	
+
 	/**
 	 * Camera state: Device is opened, but is not capturing.
 	 */
 	private static final int STATE_OPENED = 1;
-	
+
 	/**
 	 * Camera state: Showing camera preview.
 	 */
 	private static final int STATE_PREVIEW = 2;
-	
+
 	/**
 	 * Camera state: Waiting for 3A convergence before capturing a photo.
 	 */
 	private static final int STATE_WAITING_FOR_3A_CONVERGENCE = 3;
-	
+
 	private CaptureRequest.Builder mPreviewRequestBuilder;
-	
+
 	private int mState = STATE_CLOSED;
-	
+
 	/**
 	 * Timer to use with pre-capture sequence to ensure a timely capture if 3A convergence is
 	 * taking too long.
 	 */
 	private long mCaptureTimer;
-	
+
 	private String mCameraId;
-	
+
 	private CameraCaptureSession mCaptureSession;
-	
+
 	private CameraDevice mCameraDevice;
-	
+
 	private Size mPreviewSize;
-	
+
 	private CameraCharacteristics mCharacteristics;
-	
+
 	private Handler mBackgroundHandler;
-	
+
 	private final AtomicInteger mRequestCounter = new AtomicInteger();
-	
+
 	private RefCountedAutoCloseable<ImageReader> mJpegImageReader;
-	
+
 	private RefCountedAutoCloseable<ImageReader> mRawImageReader;
-	
+
 	private OrientationEventListener mOrientationListener;
-	
-	
+
+
 	/**
 	 * {@link TextureView.SurfaceTextureListener} handles several lifecycle events of a
 	 * {@link TextureView}.
 	 */
 	private final TextureView.SurfaceTextureListener mSurfaceTextureListener
 			= new TextureView.SurfaceTextureListener() {
-		
+
 		@Override
 		public void onSurfaceTextureAvailable(SurfaceTexture texture, int width, int height) {
 			//			configureTransform(width, height);
@@ -160,12 +160,12 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				createCameraPreviewSessionLocked();
 			}
 		}
-		
+
 		@Override
 		public void onSurfaceTextureSizeChanged(SurfaceTexture texture, int width, int height) {
 			//			configureTransform(width, height);
 		}
-		
+
 		@Override
 		public boolean onSurfaceTextureDestroyed(SurfaceTexture texture) {
 			synchronized (mCameraStateLock) {
@@ -173,59 +173,59 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			}
 			return true;
 		}
-		
+
 		@Override
 		public void onSurfaceTextureUpdated(SurfaceTexture texture) {
 		}
-		
+
 	};
-	
-	
+
+
 	private TextureView mTextureView;
-	
+
 	/**
 	 * An additional thread for running tasks that shouldn't block the UI.  This is used for all
 	 * callbacks from the {@link CameraDevice} and {@link CameraCaptureSession}s.
 	 */
 	private HandlerThread mBackgroundThread;
-	
+
 	/**
 	 * A {@link Semaphore} to prevent the app from exiting before closing the camera.
 	 */
 	private final Semaphore mCameraOpenCloseLock = new Semaphore(1);
-	
+
 	/**
 	 * A lock protecting camera state.
 	 */
 	private final Object mCameraStateLock = new Object();
-	
+
 	/**
 	 * Whether or not the currently configured camera device is fixed-focus.
 	 */
 	private boolean mNoAFRun = false;
-	
+
 	private int mPendingUserCaptures = 0;
-	
+
 	private final TreeMap<Integer, ImageSaver.ImageSaverBuilder> mJpegResultQueue = new TreeMap<>();
-	
+
 	private final TreeMap<Integer, ImageSaver.ImageSaverBuilder> mRawResultQueue = new TreeMap<>();
-	
+
 	private TextView tv_current;
-	
+
 	private TextView tv_total;
-	
+
 	private boolean manSet = false;
-	
+
 	private ProgressBar bar1 = null;
-	
+
 	private ProgressBar bar2 = null;
 	/**
 	 * {@link CameraDevice.StateCallback} is called when the currently active {@link CameraDevice}
 	 * changes its state.
 	 */
 	private final CameraDevice.StateCallback mStateCallback = new CameraDevice.StateCallback() {
-		
-		
+
+
 		@Override
 		public void onOpened(@NonNull CameraDevice cameraDevice) {
 			// This method is called when the camera is opened.
@@ -234,14 +234,14 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				mState = STATE_OPENED;
 				mCameraOpenCloseLock.release();
 				mCameraDevice = cameraDevice;
-				
+
 				// Start the preview session if the TextureView has been set up already.
 				if (mPreviewSize != null && mTextureView.isAvailable()) {
 					createCameraPreviewSessionLocked();
 				}
 			}
 		}
-		
+
 		@Override
 		public void onDisconnected(@NonNull CameraDevice cameraDevice) {
 			synchronized (mCameraStateLock) {
@@ -252,17 +252,17 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				mCameraDevice = null;
 			}
 		}
-		
+
 		@Override
 		public void onClosed(CameraDevice cameraDevice) {
 			synchronized (mCameraStateLock) {
 				Log.d(TAG, "Camera " + cameraDevice.getId() + " closed");
 				// TODO: 8/30/2017
 			}
-			
-			
+
+
 		}
-		
+
 		@Override
 		public void onError(@NonNull CameraDevice cameraDevice, int i) {
 			Log.e(TAG, "Received camera device error: " + i);
@@ -278,29 +278,29 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			}
 		}
 	};
-	
-	
+
+
 	/**
 	 * This a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
 	 * RAW image is ready to be saved.
 	 */
 	private final ImageReader.OnImageAvailableListener mOnRawImageAvailableListener
 			= new ImageReader.OnImageAvailableListener() {
-		
+
 		@Override
 		public void onImageAvailable(ImageReader reader) {
 			dequeueAndSaveImage(mRawResultQueue, mRawImageReader);
 		}
-		
+
 	};
-	
-	
+
+
 	/**
 	 * A {@link CameraCaptureSession.CaptureCallback} that handles events for the preview and
 	 * pre-capture sequence.
 	 */
 	private CameraCaptureSession.CaptureCallback mPreCaptureCallback = new CameraCaptureSession.CaptureCallback() {
-		
+
 		private void process(CaptureResult result) {
 			synchronized (mCameraStateLock) {
 				switch (mState) {
@@ -310,19 +310,19 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 					}
 					case STATE_WAITING_FOR_3A_CONVERGENCE: {
 						boolean readyToCapture = true;
-						
+
 						if (!mNoAFRun) {
 							Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
 							if (afState == null) {
 								break;
 							}
-							
+
 							// If auto-focus has reached locked state, we are ready to capture
 							readyToCapture =
 									(afState == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED ||
 											afState == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED);
 						}
-						
+
 						// If we are running on an non-legacy device, we should also wait until
 						// auto-exposure and auto-white-balance have converged as well before
 						// taking a picture.
@@ -331,27 +331,24 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 						if (aeState == null || awbState == null) {
 							break;
 						}
-						
+
 						readyToCapture = readyToCapture &&
 								aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED &&
 								awbState == CaptureResult.CONTROL_AWB_STATE_CONVERGED;
-						
+
 						if (!readyToCapture && hitTimeoutLocked()) {
 							Log.w(TAG, "Timed out waiting for pre-capture sequence to complete.");
 							readyToCapture = true;
 						}
-						
+
 						if (readyToCapture && mPendingUserCaptures > 0) {
 							// Capture once for each user tap of the "Picture" button.
 							while (mPendingUserCaptures > 0) {
-								//								captureStillPictureLocked(0, 0, false);
-								nineDataSet();
+								manualHelper();
 								//Set first progress bar value
-								bar1.setProgress(mRequestCounter.intValue());
+//								bar1.setProgress(mRequestCounter.intValue());
 								//Set the second progress bar value
-								bar1.setSecondaryProgress(mRequestCounter.intValue() + 1);
-								mPendingUserCaptures--;
-								
+//								bar1.setSecondaryProgress(mRequestCounter.intValue() + 1);
 							}
 							// After this, the camera will go back to the normal state of preview.
 							mState = STATE_PREVIEW;
@@ -360,21 +357,21 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				}
 			}
 		}
-		
+
 		@Override
 		public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request,
 		                                CaptureResult partialResult) {
 			process(partialResult);
 		}
-		
+
 		@Override
 		public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request,
 		                               TotalCaptureResult result) {
 			process(result);
 		}
 	};
-	
-	
+
+
 	/**
 	 * A {@link CameraCaptureSession.CaptureCallback} that handles the still JPEG and RAW capture
 	 * request.
@@ -384,10 +381,13 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		@Override
 		public void onCaptureStarted(CameraCaptureSession session, CaptureRequest request,
 		                             long timestamp, long frameNumber) {
+			Log.d(TAG, "onCaptureStarted");
+
 			long expTime = (current_EXP / 1000000);
 			String expString = (current_EXP == 0 ? "Auto" : Long.toString(expTime));
 			String isoString = (current_ISO == 0 ? "Auto" : Integer.toString(current_ISO));
-			
+			String currentDateTime = generateTimestampWithMd();
+
 			File fileTemp = new File(
 					Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
 							File.separator + "StegoCam" +
@@ -396,13 +396,9 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			if (!fileTemp.exists()) {
 				fileTemp.mkdir();
 			}
-			
+
 			File rawFile = generateFileName(isoString, expString, fileTemp);
-			Log.d(TAG, "----Pre ISO is: " + request.get(CaptureRequest.SENSOR_SENSITIVITY).toString());
-			Log.d(TAG, "----Pre EXP is: " + request.get(CaptureRequest.SENSOR_EXPOSURE_TIME).toString());
-			Log.d(TAG, "----Pre FRAME_DURATION is: " + request.get(CaptureRequest.SENSOR_FRAME_DURATION).toString());
-			
-			
+
 			// Look up the ImageSaverBuilder for this request and update it with the file name
 			// based on the capture start time.
 			ImageSaver.ImageSaverBuilder rawBuilder;
@@ -410,11 +406,11 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			synchronized (mCameraStateLock) {
 				rawBuilder = mRawResultQueue.get(requestId);
 			}
-			
+
 			if (rawBuilder != null)
 				rawBuilder.setFile(rawFile);
 		}
-		
+
 		@Override
 		public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request,
 		                               TotalCaptureResult result) {
@@ -424,13 +420,13 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				if (afState == null) {
 					Log.d(TAG, "afState == null");
 				}
-				
+
 				// If auto-focus has reached locked state, we are ready to capture
 				readyToCapture = (afState == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED ||
 						afState == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED);
 				Log.d(TAG, "readyToCapture = " + readyToCapture);
 			}
-			
+
 			// If we are running on an non-legacy device, we should also wait until
 			// auto-exposure and auto-white-balance have converged as well before
 			// taking a picture.
@@ -440,42 +436,42 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				if (aeState == null || awbState == null) {
 					Log.w(TAG, "aeState == null");
 				}
-				
+
 				readyToCapture = readyToCapture && aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED &&
 						awbState == CaptureResult.CONTROL_AWB_STATE_CONVERGED;
-				
+
 				Log.d(TAG, "readyToCapture aeState&awbState = " + readyToCapture);
 			}
-			
-			
-			Log.d(TAG, "----The current ISO is: " + result.get(CaptureResult.SENSOR_SENSITIVITY).toString());
-			Log.d(TAG, "----The current EXP is: " + result.get(CaptureResult.SENSOR_EXPOSURE_TIME).toString());
-			Log.d(TAG, "----The current FRAME_DURATION is: " + result.get(CaptureResult.SENSOR_FRAME_DURATION).toString());
-			
-			
+
+
+			Log.d(TAG, "The current ISO is: " + result.get(CaptureResult.SENSOR_SENSITIVITY).toString());
+			Log.d(TAG, "The current EXP is: " + result.get(CaptureResult.SENSOR_EXPOSURE_TIME).toString());
+			Log.d(TAG, "The current FRAME_DURATION is: " + result.get(CaptureResult.SENSOR_FRAME_DURATION).toString());
+
+
 			int requestId = (int) request.getTag();
 			ImageSaver.ImageSaverBuilder rawBuilder;
 			StringBuilder sb = new StringBuilder();
-			
+
 			// Look up the ImageSaverBuilder for this request and update it with the CaptureResult
 			synchronized (mCameraStateLock) {
 				rawBuilder = mRawResultQueue.get(requestId);
-				
+
 				if (rawBuilder != null) {
 					rawBuilder.setResult(result);
 					sb.append("Saving RAW as: ");
 					sb.append(rawBuilder.getSaveLocation());
 				}
-				
+
 				// If we have all the results necessary, save the image to a file in the background.
 				handleCompletionLocked(requestId, rawBuilder, mRawResultQueue);
-				
+
 				finishedCaptureLocked();
 			}
-			
+
 			showToast(sb.toString());
 		}
-		
+
 		@Override
 		public void onCaptureFailed(CameraCaptureSession session, CaptureRequest request,
 		                            CaptureFailure failure) {
@@ -487,10 +483,10 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			}
 			showToast("Capture failed!");
 		}
-		
+
 	};
-	
-	
+
+
 	/**
 	 * A {@link Handler} for showing {@link Toast}s on the UI thread.
 	 */
@@ -503,30 +499,30 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			}
 		}
 	};
-	
-	
+
+
 	public static StegCamFragment newInstance() {
 		return new StegCamFragment();
 	}
-	
+
 	@Override
 	public View onCreateView(LayoutInflater inflater, ViewGroup container,
 	                         Bundle savedInstanceState) {
 		return inflater.inflate(R.layout.fragment_steg, container, false);
 	}
-	
+
 	@Override
 	public void onViewCreated(final View view, Bundle savedInstanceState) {
 		view.findViewById(R.id.picture).setOnClickListener(this);
 		view.findViewById(R.id.clearCounter).setOnClickListener(this);
 		mTextureView = view.findViewById(R.id.texture);
-		
+
 		tv_current = view.findViewById(R.id.textView);
 		tv_total = view.findViewById(R.id.textView4);
 		bar1 = view.findViewById(R.id.bar1);
 		bar2 = view.findViewById(R.id.bar2);
 	}
-	
+
 	@Override
 	public void onResume() {
 		prefs = getActivity().getSharedPreferences(SHARED_PREFERENCES, Context.MODE_PRIVATE);
@@ -536,11 +532,11 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		String two = " " + 0;
 		tv_total.setText(one);
 		tv_current.setText(two);
-		
+
 		super.onResume();
 		startBackgroundThread();
 		openCamera();
-		
+
 		if (mTextureView.isAvailable()) {
 			if (mState != STATE_CLOSED) {
 				createCameraPreviewSessionLocked();
@@ -548,13 +544,13 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		} else {
 			mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
 		}
-		
+
 	}
-	
+
 	@Override
 	public void onPause() {
 		Log.d(TAG, "onPause: " + saveTotalCaptures());
-		
+
 		if (mOrientationListener != null) {
 			mOrientationListener.disable();
 		}
@@ -562,7 +558,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		stopBackgroundThread();
 		super.onPause();
 	}
-	
+
 	@Override
 	public void onRequestPermissionsResult(int requestCode, String[] permissions,
 	                                       int[] grantResults) {
@@ -577,7 +573,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 		}
 	}
-	
+
 	@Override
 	public void onClick(View view) {
 		switch (view.getId()) {
@@ -591,7 +587,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			}
 		}
 	}
-	
+
 	private void updateCounter() {
 		getActivity().runOnUiThread(new Runnable() {
 			@SuppressLint("SetTextI18n")
@@ -603,14 +599,14 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			}
 		});
 	}
-	
+
 	/**
 	 * Sets up state related to camera that is needed before opening a {@link CameraDevice}.
 	 */
 	private boolean setUpCameraOutputs() {
 		Activity activity = getActivity();
 		CameraManager manager = (CameraManager) activity.getSystemService(Context.CAMERA_SERVICE);
-		
+
 		if (manager == null) {
 			ErrorDialog.buildErrorDialog("This device doesn't support Camera2 API.").
 					show(getFragmentManager(), "dialog");
@@ -621,26 +617,26 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			for (String cameraId : manager.getCameraIdList()) {
 				CameraCharacteristics characteristics
 						= manager.getCameraCharacteristics(cameraId);
-				
+
 				// We only use a camera that supports RAW in this sample.
 				if (!contains(characteristics.get(
 						CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES),
 						CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_RAW)) {
 					continue;
 				}
-				
+
 				StreamConfigurationMap map = characteristics.get(
 						CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-				
+
 				// For still image captures, we use the largest available size.
 				Size largestJpeg = Collections.max(
 						Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
 						new CompareSizesByArea());
-				
+
 				Size largestRaw = Collections.max(
 						Arrays.asList(map.getOutputSizes(ImageFormat.RAW_SENSOR)),
 						new CompareSizesByArea());
-				
+
 				synchronized (mCameraStateLock) {
 					// Set up ImageReaders for JPEG and RAW outputs.  Place these in a reference
 					// counted wrapper to ensure they are only closed when all background tasks
@@ -652,7 +648,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 					}
 					//					mJpegImageReader.get().setOnImageAvailableListener(
 					//							mOnJpegImageAvailableListener, mBackgroundHandler);
-					
+
 					if (mRawImageReader == null || mRawImageReader.getAndRetain() == null) {
 						mRawImageReader = new RefCountedAutoCloseable<>(
 								ImageReader.newInstance(largestRaw.getWidth(),
@@ -660,7 +656,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 					}
 					mRawImageReader.get().setOnImageAvailableListener(
 							mOnRawImageAvailableListener, mBackgroundHandler);
-					
+
 					mCharacteristics = characteristics;
 					mCameraId = cameraId;
 				}
@@ -669,14 +665,14 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		} catch (CameraAccessException e) {
 			e.printStackTrace();
 		}
-		
+
 		// If we found no suitable cameras for capturing RAW, warn the user.
 		ErrorDialog.buildErrorDialog("This device doesn't support capturing RAW photos").
 				show(getFragmentManager(), "dialog");
 		return false;
 	}
-	
-	
+
+
 	private void openCamera() {
 		if (!setUpCameraOutputs()) {
 			return;
@@ -685,7 +681,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			checkPermission();
 			return;
 		}
-		
+
 		Activity activity = getActivity();
 		CameraManager manager = (CameraManager) activity.getSystemService(Context.CAMERA_SERVICE);
 		try {
@@ -693,28 +689,28 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			if (!mCameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
 				throw new RuntimeException("Time out waiting to lock camera opening.");
 			}
-			
+
 			String cameraId;
 			Handler backgroundHandler;
 			synchronized (mCameraStateLock) {
 				cameraId = mCameraId;
 				backgroundHandler = mBackgroundHandler;
 			}
-			
+
 			// Attempt to open the camera. mStateCallback will be called on the background handler's
 			// thread when this succeeds or fails.
 			manager.openCamera(cameraId, mStateCallback, backgroundHandler);
-			
+
 		} catch (CameraAccessException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {
 			throw new RuntimeException("Interrupted while trying to lock camera opening.", e);
 		}
-		
-		
+
+
 	}
-	
-	
+
+
 	/**
 	 * Tells whether all the necessary permissions are granted to this app.
 	 *
@@ -729,12 +725,12 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		}
 		return true;
 	}
-	
+
 	/**
 	 * Checking permissions
 	 */
 	private void checkPermission() {
-		
+
 		final List<String> neededPermissions = new ArrayList<>();
 		for (final String permission : CAMERA_PERMISSIONS) {
 			if (ContextCompat.checkSelfPermission(getActivity(),
@@ -742,13 +738,13 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				neededPermissions.add(permission);
 			}
 		}
-		
+
 		if (!neededPermissions.isEmpty()) {
 			FragmentCompat.requestPermissions(this, neededPermissions.toArray(new String[]{}), REQUEST_CAMERA_PERMISSIONS);
 		}
 	}
-	
-	
+
+
 	/**
 	 * Closes the current {@link CameraDevice}.
 	 */
@@ -756,7 +752,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		try {
 			mCameraOpenCloseLock.acquire();
 			synchronized (mCameraStateLock) {
-				
+
 				// Reset state and clean up resources used by the camera.
 				// Note: After calling this, the ImageReaders will be closed after any background
 				// tasks saving Images from these readers have been completed.
@@ -785,7 +781,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			mCameraOpenCloseLock.release();
 		}
 	}
-	
+
 	/**
 	 * Starts a background thread and its {@link Handler}.
 	 */
@@ -796,7 +792,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
 		}
 	}
-	
+
 	/**
 	 * Stops the background thread and its {@link Handler}.
 	 */
@@ -812,8 +808,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			e.printStackTrace();
 		}
 	}
-	
-	
+
+
 	/**
 	 * Creates a new {@link CameraCaptureSession} for camera preview.
 	 * <p/>
@@ -824,15 +820,15 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			SurfaceTexture texture = mTextureView.getSurfaceTexture();
 			// We configure the size of default buffer to be the size of camera preview we want.
 			//			texture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
-			texture.setDefaultBufferSize(960, 540);
-			
+			texture.setDefaultBufferSize(540, 960);
+
 			// This is the output Surface we need to start preview.
 			Surface surface = new Surface(texture);
-			
+
 			// We set up a CaptureRequest.Builder with the output Surface.
 			mPreviewRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
 			mPreviewRequestBuilder.addTarget(surface);
-			
+
 			// Here, we create a CameraCaptureSession for camera preview.
 			mCameraDevice.createCaptureSession(Arrays.asList(surface, mRawImageReader.get().getSurface()),
 					new CameraCaptureSession.StateCallback() {
@@ -843,7 +839,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 								if (null == mCameraDevice) {
 									return;
 								}
-								
+
 								try {
 									setup3AControlsLocked(mPreviewRequestBuilder);
 									// Finally, we start displaying the camera preview.
@@ -859,7 +855,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 								mCaptureSession = cameraCaptureSession;
 							}
 						}
-						
+
 						@Override
 						public void onConfigureFailed(CameraCaptureSession cameraCaptureSession) {
 							showToast("Failed to configure camera.");
@@ -870,8 +866,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			e.printStackTrace();
 		}
 	}
-	
-	
+
+
 	/**
 	 * Configure the given {@link CaptureRequest.Builder} to use auto-focus, auto-exposure, and
 	 * auto-white-balance controls if available.
@@ -884,13 +880,13 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		// Enable auto-magical 3A run by camera device
 		builder.set(CaptureRequest.CONTROL_MODE,
 				CaptureRequest.CONTROL_MODE_AUTO);
-		
+
 		Float minFocusDist =
 				mCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE);
-		
+
 		// If MINIMUM_FOCUS_DISTANCE is 0, lens is fixed-focus and we need to skip the AF run.
 		mNoAFRun = (minFocusDist == null || minFocusDist == 0);
-		
+
 		if (!mNoAFRun) {
 			// If there is a "continuous picture" mode available, use it, otherwise default to AUTO.
 			if (contains(mCharacteristics.get(
@@ -903,7 +899,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 						CaptureRequest.CONTROL_AF_MODE_AUTO);
 			}
 		}
-		
+
 		// If there is an auto-magical flash control mode available, use it, otherwise default to
 		// the "on" mode, which is guaranteed to always be available.
 		if (contains(mCharacteristics.get(
@@ -915,7 +911,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			builder.set(CaptureRequest.CONTROL_AE_MODE,
 					CaptureRequest.CONTROL_AE_MODE_ON);
 		}
-		
+
 		// If there is an auto-magical white balance control mode available, use it.
 		if (contains(mCharacteristics.get(
 				CameraCharacteristics.CONTROL_AWB_AVAILABLE_MODES),
@@ -924,10 +920,10 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			builder.set(CaptureRequest.CONTROL_AWB_MODE,
 					CaptureRequest.CONTROL_AWB_MODE_AUTO);
 		}
-		
+
 	}
-	
-	
+
+
 	/**
 	 * Initiate a still image capture.
 	 * <p/>
@@ -938,7 +934,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	 */
 	private void takePicture() {
 		synchronized (mCameraStateLock) {
-			
+
 			mPendingUserCaptures++;
 			Log.d(TAG, "Pending captures: " + mPendingUserCaptures);
 			//			tv.setText(mRequestCounter + "");
@@ -947,7 +943,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			if (mState != STATE_PREVIEW) {
 				return;
 			}
-			
+
 			try {
 				// Trigger an auto-focus run if camera is capable. If the camera is already focused,
 				// this should do nothing.
@@ -955,7 +951,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 					mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
 							CameraMetadata.CONTROL_AF_TRIGGER_START);
 				}
-				
+
 				// If this is not a legacy device, we can also trigger an auto-exposure metering
 				// run.
 				if (!isLegacyLocked()) {
@@ -963,14 +959,14 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 					mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
 							CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START);
 				}
-				
+
 				// Update state machine to wait for auto-focus, auto-exposure, and
 				// auto-white-balance (aka. "3A") to converge.
 				mState = STATE_WAITING_FOR_3A_CONVERGENCE;
-				
+
 				// Start a timer for the pre-capture sequence.
 				startTimerLocked();
-				
+
 				// Replace the existing repeating request with one with updated 3A triggers.
 				mCaptureSession.capture(mPreviewRequestBuilder.build(), mPreCaptureCallback,
 						mBackgroundHandler);
@@ -979,8 +975,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			}
 		}
 	}
-	
-	
+
+
 	/**
 	 * * Send a capture request to the camera device that initiates a capture targeting the JPEG and
 	 * RAW outputs.
@@ -993,20 +989,20 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	 *                 {@link #setup3AControlsLocked(CaptureRequest.Builder captureBuilder)}
 	 */
 	private void captureStillPictureLocked(int isoValue, long exp, boolean manual) {
-		
+
 		try {
 			final Activity activity = getActivity();
 			if (null == activity || null == mCameraDevice) {
 				return;
 			}
-			
+
 			// This is the CaptureRequest.Builder that we use to take a picture.
 			final CaptureRequest.Builder captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
-			
+
 			//			captureBuilder.addTarget(mJpegImageReader.get().getSurface());
 			captureBuilder.addTarget(mRawImageReader.get().getSurface());
-			
-			
+
+
 			if (manual) {
 				captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
 				captureBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, isoValue);
@@ -1014,28 +1010,28 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			} else {
 				setup3AControlsLocked(captureBuilder);
 			}
-			
+
 			// Set orientation.
 			int rotation = activity.getWindowManager().getDefaultDisplay().getRotation();
-			
+
 			captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
-			
+
 			// Set request tag to easily track results in callbacks.
 			Log.d(TAG, "Request counter: " + mRequestCounter.intValue());
 			captureBuilder.setTag(mRequestCounter.getAndIncrement());
-			
+
 			final CaptureRequest request = captureBuilder.build();
-			
+
 			// Create an ImageSaverBuilder in which to collect results, and add it to the queue
 			// of active requests.
 			ImageSaver.ImageSaverBuilder jpegBuilder = new ImageSaver.ImageSaverBuilder(activity)
 					.setCharacteristics(mCharacteristics);
 			ImageSaver.ImageSaverBuilder rawBuilder = new ImageSaver.ImageSaverBuilder(activity)
 					.setCharacteristics(mCharacteristics);
-			
+
 			mJpegResultQueue.put((int) request.getTag(), jpegBuilder);
 			mRawResultQueue.put((int) request.getTag(), rawBuilder);
-			
+
 			//			SurfaceTexture mDummyPreview = new SurfaceTexture(1);
 			//
 			//			mCameraDevice.createCaptureSession(Arrays.asList(new Surface(mDummyPreview), /*mJpegImageReader.get().getSurface(),*/
@@ -1061,15 +1057,15 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			//					}
 			//					, mBackgroundHandler
 			//			);
-			
+
 			mCaptureSession.capture(request, mCaptureCallback, mBackgroundHandler);
-			
+
 		} catch (CameraAccessException e) {
 			e.printStackTrace();
 		}
 	}
-	
-	
+
+
 	/**
 	 * Called after a RAW/JPEG capture has completed; resets the AF trigger state for the
 	 * pre-capture sequence.
@@ -1079,17 +1075,17 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	private void finishedCaptureLocked() {
 		updateCounter();
 		Log.d(TAG, "\nFinishing -------------------------" + mRequestCounter.intValue() + " --------------------------\n\n");
-		
-		
+
+
 		try {
 			// Reset the auto-focus trigger in case AF didn't run quickly enough.
 			if (!mNoAFRun) {
 				mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
 						CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
-				
+
 				mCaptureSession.capture(mPreviewRequestBuilder.build(), mPreCaptureCallback,
 						mBackgroundHandler);
-				
+
 				mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
 						CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
 				Log.w(TAG, "Not good!__________________");
@@ -1097,9 +1093,9 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		} catch (CameraAccessException e) {
 			e.printStackTrace();
 		}
-		
+
 		//* 10
-		if (mRequestCounter.intValue() < (imgNeed + 1)) {
+		if (mRequestCounter.intValue() < (imgNeed * 10)) {
 			new Handler().postDelayed(new Runnable() {
 				@Override
 				public void run() {
@@ -1107,12 +1103,12 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				}
 			}, 500);
 		}
-		if (mRequestCounter.intValue() >= (imgNeed + 1)) {
+		if (mRequestCounter.intValue() >= (imgNeed * 10)) {
 			detachProcessBar();
 			AlertDialogFragment.buildAlertDialog("TASK FINISHED").show(getFragmentManager(), "dialog");
 		}
 	}
-	
+
 	private void detachProcessBar() {
 		getActivity().runOnUiThread(new Runnable() {
 			@Override
@@ -1122,8 +1118,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			}
 		});
 	}
-	
-	
+
+
 	/**
 	 * Check if we are using a device that only supports the LEGACY hardware level.
 	 * <p/>
@@ -1135,8 +1131,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		return mCharacteristics.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL) ==
 				CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY;
 	}
-	
-	
+
+
 	/**
 	 * Start the timer for the pre-capture sequence.
 	 * <p/>
@@ -1145,7 +1141,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	private void startTimerLocked() {
 		mCaptureTimer = SystemClock.elapsedRealtime();
 	}
-	
+
 	/**
 	 * Check if the timer for the pre-capture sequence has been hit.
 	 * <p/>
@@ -1156,8 +1152,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	private boolean hitTimeoutLocked() {
 		return (SystemClock.elapsedRealtime() - mCaptureTimer) > PRECAPTURE_TIMEOUT_MS;
 	}
-	
-	
+
+
 	/**
 	 * Retrieve the next {@link Image} from a reference counted {@link ImageReader}, retaining
 	 * that {@link ImageReader} until that {@link Image} is no longer in use, and set this
@@ -1175,7 +1171,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			Map.Entry<Integer, ImageSaver.ImageSaverBuilder> entry =
 					pendingQueue.firstEntry();
 			ImageSaver.ImageSaverBuilder builder = entry.getValue();
-			
+
 			// Increment reference count to prevent ImageReader from being closed while we
 			// are saving its Images in a background thread (otherwise their resources may
 			// be freed while we are writing to a file).
@@ -1185,7 +1181,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				pendingQueue.remove(entry.getKey());
 				return;
 			}
-			
+
 			Image image;
 			try {
 				image = reader.get().acquireNextImage();
@@ -1195,14 +1191,14 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				pendingQueue.remove(entry.getKey());
 				return;
 			}
-			
+
 			builder.setRefCountedReader(reader).setImage(image);
-			
+
 			handleCompletionLocked(entry.getKey(), builder, pendingQueue);
 		}
 	}
-	
-	
+
+
 	/**
 	 * Runnable that saves an {@link Image} into the specified {@link File}, and updates
 	 * {@link android.provider.MediaStore} to include the resulting file.
@@ -1211,7 +1207,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	 * result information becomes available.
 	 */
 	private static class ImageSaver implements Runnable {
-		
+
 		/**
 		 * The image to save.
 		 */
@@ -1220,27 +1216,27 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		 * The file we save the image into.
 		 */
 		private final File mFile;
-		
+
 		/**
 		 * The CaptureResult for this image capture.
 		 */
 		private final CaptureResult mCaptureResult;
-		
+
 		/**
 		 * The CameraCharacteristics for this camera device.
 		 */
 		private final CameraCharacteristics mCharacteristics;
-		
+
 		/**
 		 * The Context to use when updating MediaStore with the saved images.
 		 */
 		private final Context mContext;
-		
+
 		/**
 		 * A reference counted wrapper for the ImageReader that owns the given image.
 		 */
 		private final RefCountedAutoCloseable<ImageReader> mReader;
-		
+
 		private ImageSaver(Image image, File file, CaptureResult result,
 		                   CameraCharacteristics characteristics, Context context,
 		                   RefCountedAutoCloseable<ImageReader> reader) {
@@ -1251,7 +1247,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			mContext = context;
 			mReader = reader;
 		}
-		
+
 		@Override
 		public void run() {
 			boolean success = false;
@@ -1259,13 +1255,13 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			switch (format) {
 				case ImageFormat.JPEG: {
 					Log.v(TAG, "Saving jpeg picture");
-					
+
 					ByteBuffer buffer = mImage.getPlanes()[0].getBuffer();
 					byte[] bytes = new byte[buffer.remaining()];
 					buffer.get(bytes);
-					
+
 					FileOutputStream output = null;
-					
+
 					try {
 						output = new FileOutputStream(mFile);
 						output.write(bytes);
@@ -1286,15 +1282,15 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				}
 				case ImageFormat.RAW_SENSOR: {
 					Log.v(TAG, "Saving raw picture.");
-					
+
 					DngCreator dngCreator = new DngCreator(mCharacteristics, mCaptureResult);
 					FileOutputStream output = null;
 					try {
 						output = new FileOutputStream(mFile);
 						dngCreator.writeImage(output, mImage);
-						
+
 						Image.Plane pl[] = mImage.getPlanes();
-						
+
 						success = true;
 					} catch (IOException e) {
 						e.printStackTrace();
@@ -1315,10 +1311,10 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 					break;
 				}
 			}
-			
+
 			// Decrement reference count to allow ImageReader to be closed to free up resources.
 			mReader.close();
-			
+
 			// If saving the file succeeded, update MediaStore.
 			if (success) {
 				MediaScannerConnection.scanFile(mContext, new String[]{mFile.getPath()},
@@ -1327,7 +1323,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 							public void onMediaScannerConnected() {
 								// Do nothing
 							}
-							
+
 							@Override
 							public void onScanCompleted(String path, Uri uri) {
 								Log.i(TAG, "Scanned " + path + ":");
@@ -1336,7 +1332,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 						});
 			}
 		}
-		
+
 		/**
 		 * Builder class for constructing {@link ImageSaver}s.
 		 * <p/>
@@ -1349,7 +1345,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			private CameraCharacteristics mCharacteristics;
 			private Context mContext;
 			private RefCountedAutoCloseable<ImageReader> mReader;
-			
+
 			/**
 			 * Construct a new ImageSaverBuilder using the given {@link Context}.
 			 *
@@ -1359,37 +1355,37 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			public ImageSaverBuilder(final Context context) {
 				mContext = context;
 			}
-			
+
 			public synchronized ImageSaverBuilder setRefCountedReader(
 					RefCountedAutoCloseable<ImageReader> reader) {
 				if (reader == null)
 					throw new NullPointerException();
-				
+
 				mReader = reader;
 				return this;
 			}
-			
+
 			public synchronized ImageSaverBuilder setImage(final Image image) {
 				if (image == null)
 					throw new NullPointerException();
 				mImage = image;
 				return this;
 			}
-			
+
 			public synchronized ImageSaverBuilder setFile(final File file) {
 				if (file == null)
 					throw new NullPointerException();
 				mFile = file;
 				return this;
 			}
-			
+
 			public synchronized ImageSaverBuilder setResult(final CaptureResult result) {
 				if (result == null)
 					throw new NullPointerException();
 				mCaptureResult = result;
 				return this;
 			}
-			
+
 			public synchronized ImageSaverBuilder setCharacteristics(
 					final CameraCharacteristics characteristics) {
 				if (characteristics == null)
@@ -1397,7 +1393,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				mCharacteristics = characteristics;
 				return this;
 			}
-			
+
 			public synchronized ImageSaver buildIfComplete() {
 				if (!isComplete()) {
 					return null;
@@ -1405,28 +1401,28 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				return new ImageSaver(mImage, mFile, mCaptureResult, mCharacteristics, mContext,
 						mReader);
 			}
-			
+
 			public synchronized String getSaveLocation() {
 				return (mFile == null) ? "Unknown" : mFile.toString();
 			}
-			
+
 			private boolean isComplete() {
 				return mImage != null && mFile != null && mCaptureResult != null
 						&& mCharacteristics != null;
 			}
 		}
 	}
-	
-	
+
+
 	//Utility
 	//======================================================================================
-	
-	
+
+
 	/**
 	 * Comparator based on area of the given {@link Size} objects.
 	 */
 	static class CompareSizesByArea implements Comparator<Size> {
-		
+
 		@Override
 		public int compare(Size lhs, Size rhs) {
 			// We cast here to ensure the multiplications won't overflow
@@ -1434,23 +1430,23 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 					(long) rhs.getWidth() * rhs.getHeight());
 		}
 	}
-	
-	
+
+
 	public static class AlertDialogFragment extends DialogFragment {
-		
+
 		private String mAlertMessage;
-		
+
 		public AlertDialogFragment() {
 			mAlertMessage = "Unknown things occurred!";
 		}
-		
+
 		// Build a dialog with a custom message (Fragments require default constructor).
 		public static AlertDialogFragment buildAlertDialog(String message) {
 			AlertDialogFragment dialog = new AlertDialogFragment();
 			dialog.mAlertMessage = message;
 			return dialog;
 		}
-		
+
 		@Override
 		public Dialog onCreateDialog(Bundle savedInstanceState) {
 			// Use the Builder class for convenient dialog construction
@@ -1471,27 +1467,27 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			return builder.create();
 		}
 	}
-	
-	
+
+
 	/**
 	 * A dialog fragment for displaying non-recoverable errors; this {@ling Activity} will be
 	 * finished once the dialog has been acknowledged by the user.
 	 */
 	public static class ErrorDialog extends DialogFragment {
-		
+
 		private String mErrorMessage;
-		
+
 		public ErrorDialog() {
 			mErrorMessage = "Unknown error occurred!";
 		}
-		
+
 		// Build a dialog with a custom message (Fragments require default constructor).
 		public static ErrorDialog buildErrorDialog(String errorMessage) {
 			ErrorDialog dialog = new ErrorDialog();
 			dialog.mErrorMessage = errorMessage;
 			return dialog;
 		}
-		
+
 		@Override
 		public Dialog onCreateDialog(Bundle savedInstanceState) {
 			final Activity activity = getActivity();
@@ -1506,8 +1502,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 					.create();
 		}
 	}
-	
-	
+
+
 	/**
 	 * A wrapper for an {@link AutoCloseable} object that implements reference counting to allow
 	 * for resource management.
@@ -1515,7 +1511,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	public static class RefCountedAutoCloseable<T extends AutoCloseable> implements AutoCloseable {
 		private T mObject;
 		private long mRefCount = 0;
-		
+
 		/**
 		 * Wrap the given object.
 		 *
@@ -1526,7 +1522,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				throw new NullPointerException();
 			mObject = object;
 		}
-		
+
 		/**
 		 * Increment the reference count and return the wrapped object.
 		 *
@@ -1539,7 +1535,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			mRefCount++;
 			return mObject;
 		}
-		
+
 		/**
 		 * Return the wrapped object.
 		 *
@@ -1548,7 +1544,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		public synchronized T get() {
 			return mObject;
 		}
-		
+
 		/**
 		 * Decrement the reference count and release the wrapped object if there are no other
 		 * users retaining this object.
@@ -1569,8 +1565,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			}
 		}
 	}
-	
-	
+
+
 	/**
 	 * Generate a string containing a formatted timestamp with the current date and time.
 	 *
@@ -1580,7 +1576,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		SimpleDateFormat sdf = new SimpleDateFormat("HH_mm_ss_SSS", Locale.US);
 		return sdf.format(new Date());
 	}
-	
+
 	/**
 	 * Generate a string containing a formatted timestamp with the current date and time.
 	 *
@@ -1590,7 +1586,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		SimpleDateFormat sdf = new SimpleDateFormat("MM_dd_HH_mm_ss_SSS", Locale.US);
 		return sdf.format(new Date());
 	}
-	
+
 	/**
 	 *
 	 */
@@ -1602,17 +1598,32 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			sb.append("0");
 		}
 		sb.append(num + "");
-		
-		File rawFile = new File(
-				Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
-						File.separator + "StegoCam" +
-						File.separator + "I" + isoString + "E" + expString +
-						File.separator + "RAW_" + sb.toString() + ".dng");
-		
-		return rawFile;
+
+		if (mRequestCounter.intValue() == 1) {
+			File tempFile = new File(Environment.getExternalStoragePublicDirectory(Environment
+					.DIRECTORY_DCIM) +
+					File.separator + "StegoCam" + File.separator + "first");
+			if (!tempFile.exists()) {
+				tempFile.mkdir();
+			}
+
+			File rawFile = new File(
+					Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
+							File.separator + "StegoCam" + File.separator + "first" +
+							File.separator + "RAW_" + sb.toString() + ".dng");
+			return rawFile;
+		} else {
+			File rawFile = new File(
+					Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
+							File.separator + "StegoCam" +
+							File.separator + "I" + isoString + "E" + expString +
+							File.separator + "RAW_" + sb.toString() + ".dng");
+
+			return rawFile;
+		}
 	}
-	
-	
+
+
 	/**
 	 * Return true if the given array contains the given integer.
 	 *
@@ -1631,8 +1642,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		}
 		return false;
 	}
-	
-	
+
+
 	/**
 	 * Shows a {@link Toast} on the UI thread.
 	 *
@@ -1645,8 +1656,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		message.obj = text;
 		mMessageHandler.sendMessage(message);
 	}
-	
-	
+
+
 	/**
 	 * If the given request has been completed, remove it from the queue of active requests and
 	 * send an {@link ImageSaver} with the results from this request to a background thread to
@@ -1668,8 +1679,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			AsyncTask.THREAD_POOL_EXECUTOR.execute(saver);
 		}
 	}
-	
-	
+
+
 	/**
 	 * Shows that this app really needs the permission and finishes the app.
 	 */
@@ -1680,90 +1691,85 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			activity.finish();
 		}
 	}
-	
+
 	private int getTotalCaptures() {
 		return prefs.getInt(TOTAL_IMAGECOUNTER, 0);
 	}
-	
+
 	private int saveTotalCaptures() {
 		int counter = getTotalCaptures() + mRequestCounter.intValue();
 		prefs.edit().putInt(TOTAL_IMAGECOUNTER, counter).apply();
 		return counter;
 	}
-	
+
 	private void cleanCounter() {
 		Log.v(TAG, "Cleaning counter!");
 		prefs.edit().putInt(TOTAL_IMAGECOUNTER, 0).apply();
 		AlertDialogFragment.buildAlertDialog("Refreshing total counter!").show(getFragmentManager(), "dialog");
-		
+
 	}
-	
-	private void nineDataSet() {
-		
+
+	private void manualHelper() {
 		if (mRequestCounter.intValue() == 0) {
 			current_ISO = 0;
 			current_EXP = 0;
-			
-			getActivity().runOnUiThread(new Runnable() {
-				@SuppressLint("SetTextI18n")
-				@Override
-				public void run() {
-					bar1.setVisibility(View.VISIBLE);
-					bar1.setMax(imgNeed * 10 + 1);
-					bar2.setVisibility(View.VISIBLE);
-				}
-			});
-			
-			
-			new Handler().postDelayed(new Runnable() {
-				@Override
-				public void run() {
-					captureStillPictureLocked(current_ISO, current_EXP, false);
-				}
-			}, 5000);
+			captureStillPictureLocked(current_ISO, current_EXP, false);
+
+//			getActivity().runOnUiThread(new Runnable() {
+//				@SuppressLint("SetTextI18n")
+//				@Override
+//				public void run() {
+//					Log.w(TAG, "Bar");
+//					bar1.setVisibility(View.VISIBLE);
+//					bar1.setMax(imgNeed * 10);
+//					bar2.setVisibility(View.VISIBLE);
+//				}
+//			});
+
+
 		}
-		
-		if (mRequestCounter.intValue() < (imgNeed + 1) && mRequestCounter.intValue() != 0) {
+
+		if (mRequestCounter.intValue() < imgNeed && mRequestCounter.intValue() != 0) {
 			current_ISO = 0;
 			current_EXP = 0;
 			captureStillPictureLocked(0, 0, false);
-		} else if (mRequestCounter.intValue() >= (imgNeed + 1) && mRequestCounter.intValue() < (imgNeed * 2 + 1)) {
+		} else if (mRequestCounter.intValue() >= imgNeed && mRequestCounter.intValue() < (imgNeed * 2)) {
 			current_ISO = ISO_VALUE_200;
 			current_EXP = EXPOSURE_TIME_1_50;
 			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 2 + 1) && mRequestCounter.intValue() < (imgNeed * 3 + 1)) {
+		} else if (mRequestCounter.intValue() >= (imgNeed * 2) && mRequestCounter.intValue() < (imgNeed * 3)) {
 			current_ISO = ISO_VALUE_1000;
 			current_EXP = EXPOSURE_TIME_1_50;
 			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 3 + 1) && mRequestCounter.intValue() < (imgNeed * 4 + 1)) {
+		} else if (mRequestCounter.intValue() >= (imgNeed * 3) && mRequestCounter.intValue() < (imgNeed * 4)) {
 			current_ISO = ISO_VALUE_100;
 			current_EXP = EXPOSURE_TIME_1_10;
 			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 4 + 1) && mRequestCounter.intValue() < (imgNeed * 5 + 1)) {
+		} else if (mRequestCounter.intValue() >= (imgNeed * 4) && mRequestCounter.intValue() < (imgNeed * 5)) {
 			current_ISO = ISO_VALUE_200;
 			current_EXP = EXPOSURE_TIME_1_10;
 			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 5 + 1) && mRequestCounter.intValue() < (imgNeed * 6 + 1)) {
+		} else if (mRequestCounter.intValue() >= (imgNeed * 5) && mRequestCounter.intValue() < (imgNeed * 6)) {
 			current_ISO = ISO_VALUE_1000;
 			current_EXP = EXPOSURE_TIME_1_10;
 			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 6 + 1) && mRequestCounter.intValue() < (imgNeed * 7 + 1)) {
+		} else if (mRequestCounter.intValue() >= (imgNeed * 6) && mRequestCounter.intValue() < (imgNeed * 7)) {
 			current_ISO = ISO_VALUE_100;
 			current_EXP = EXPOSURE_TIME_1_200;
 			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 7 + 1) && mRequestCounter.intValue() < (imgNeed * 8 + 1)) {
+		} else if (mRequestCounter.intValue() >= (imgNeed * 7) && mRequestCounter.intValue() < (imgNeed * 8)) {
 			current_ISO = ISO_VALUE_200;
 			current_EXP = EXPOSURE_TIME_1_200;
 			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 8 + 1) && mRequestCounter.intValue() < (imgNeed * 9 + 1)) {
+		} else if (mRequestCounter.intValue() >= (imgNeed * 8) && mRequestCounter.intValue() < (imgNeed * 9)) {
 			current_ISO = ISO_VALUE_1000;
 			current_EXP = EXPOSURE_TIME_1_200;
 			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 9 + 1) && mRequestCounter.intValue() < (imgNeed * 10 + 1)) {
+		} else if (mRequestCounter.intValue() >= (imgNeed * 9) && mRequestCounter.intValue() < (imgNeed * 10)) {
 			current_ISO = ISO_VALUE_100;
 			current_EXP = EXPOSURE_TIME_1_50;
 			captureStillPictureLocked(current_ISO, current_EXP, true);
 		}
 	}
-	
+
 }
