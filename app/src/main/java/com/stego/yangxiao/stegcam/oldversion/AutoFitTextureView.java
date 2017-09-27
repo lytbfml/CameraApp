@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.stego.yangxiao.stegcam;
+package com.stego.yangxiao.stegcam.oldversion;
 
 import android.content.Context;
 import android.util.AttributeSet;
