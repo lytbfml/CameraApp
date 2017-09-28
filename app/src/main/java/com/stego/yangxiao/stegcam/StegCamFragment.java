@@ -41,6 +41,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class StegCamFragment extends Fragment implements View.OnClickListener, FragmentCompat.OnRequestPermissionsResultCallback {
 	
+	private static final String TAG = "StegCam";
+	
 	int imgNeed = 1;
 	
 	private static final String SHARED_PREFERENCES = "com.stegCam.yangxiao";
@@ -91,8 +93,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 	};
 	
 	private static final long PRECAPTURE_TIMEOUT_MS = 1000;
-	
-	private static final String TAG = "StegCam";
 	
 	/**
 	 * Camera state: Device is closed.
@@ -339,14 +339,12 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 						if (readyToCapture && mPendingUserCaptures > 0) {
 							// Capture once for each user tap of the "Picture" button.
 							while (mPendingUserCaptures > 0) {
-								//								captureStillPictureLocked(0, 0, false);
 								nineDataSet();
 								//Set first progress bar value
 								bar1.setProgress(mRequestCounter.intValue());
 								//Set the second progress bar value
 								bar1.setSecondaryProgress(mRequestCounter.intValue() + 1);
 								mPendingUserCaptures--;
-								
 							}
 							// After this, the camera will go back to the normal state of preview.
 							mState = STATE_PREVIEW;
@@ -1073,7 +1071,6 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		updateCounter();
 		Log.d(TAG, "\nFinishing -------------------------" + mRequestCounter.intValue() + " --------------------------\n\n");
 		
-		
 		try {
 			// Reset the auto-focus trigger in case AF didn't run quickly enough.
 			if (!mNoAFRun) {
@@ -1085,14 +1082,13 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				
 				mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
 						CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
-				Log.w(TAG, "Not good!__________________");
+				Log.w(TAG, "Reset AF");
 			}
 		} catch (CameraAccessException e) {
 			e.printStackTrace();
 		}
 		
-		//* 10
-		if (mRequestCounter.intValue() < (imgNeed + 1)) {
+		if (mRequestCounter.intValue() < (imgNeed * 10)) {
 			new Handler().postDelayed(new Runnable() {
 				@Override
 				public void run() {
@@ -1100,7 +1096,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				}
 			}, 500);
 		}
-		if (mRequestCounter.intValue() >= (imgNeed + 1)) {
+		if (mRequestCounter.intValue() >= (imgNeed * 10)) {
 			detachProcessBar();
 			HelperMethod.AlertDialogFragment.buildAlertDialog("TASK FINISHED").show(getFragmentManager(), "dialog");
 		}
@@ -1494,7 +1490,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 				@Override
 				public void run() {
 					bar1.setVisibility(View.VISIBLE);
-					bar1.setMax(imgNeed * 10 + 1);
+					bar1.setMax(imgNeed * 10);
 					bar2.setVisibility(View.VISIBLE);
 				}
 			});
@@ -1508,45 +1504,45 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			}, 5000);
 		}
 		
-		if (mRequestCounter.intValue() < (imgNeed + 1) && mRequestCounter.intValue() != 0) {
+		if (mRequestCounter.intValue() < (imgNeed) && mRequestCounter.intValue() != 0) {
 			current_ISO = 0;
 			current_EXP = 0;
 			captureStillPictureLocked(0, 0, false);
-		} else if (mRequestCounter.intValue() >= (imgNeed + 1) && mRequestCounter.intValue() < (imgNeed * 2 + 1)) {
-			current_ISO = ISO_VALUE_200;
-			current_EXP = EXPOSURE_TIME_1_50;
-			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 2 + 1) && mRequestCounter.intValue() < (imgNeed * 3 + 1)) {
-			current_ISO = ISO_VALUE_1000;
-			current_EXP = EXPOSURE_TIME_1_50;
-			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 3 + 1) && mRequestCounter.intValue() < (imgNeed * 4 + 1)) {
+		} else if (mRequestCounter.intValue() >= (imgNeed) && mRequestCounter.intValue() < (imgNeed * 2)) {
 			current_ISO = ISO_VALUE_100;
 			current_EXP = EXPOSURE_TIME_1_10;
 			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 4 + 1) && mRequestCounter.intValue() < (imgNeed * 5 + 1)) {
+		} else if (mRequestCounter.intValue() >= (imgNeed * 2) && mRequestCounter.intValue() < (imgNeed * 3)) {
 			current_ISO = ISO_VALUE_200;
 			current_EXP = EXPOSURE_TIME_1_10;
 			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 5 + 1) && mRequestCounter.intValue() < (imgNeed * 6 + 1)) {
-			current_ISO = ISO_VALUE_1000;
-			current_EXP = EXPOSURE_TIME_1_10;
-			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 6 + 1) && mRequestCounter.intValue() < (imgNeed * 7 + 1)) {
-			current_ISO = ISO_VALUE_100;
-			current_EXP = EXPOSURE_TIME_1_200;
-			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 7 + 1) && mRequestCounter.intValue() < (imgNeed * 8 + 1)) {
-			current_ISO = ISO_VALUE_200;
-			current_EXP = EXPOSURE_TIME_1_200;
-			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 8 + 1) && mRequestCounter.intValue() < (imgNeed * 9 + 1)) {
-			current_ISO = ISO_VALUE_1000;
-			current_EXP = EXPOSURE_TIME_1_200;
-			captureStillPictureLocked(current_ISO, current_EXP, true);
-		} else if (mRequestCounter.intValue() >= (imgNeed * 9 + 1) && mRequestCounter.intValue() < (imgNeed * 10 + 1)) {
+		} else if (mRequestCounter.intValue() >= (imgNeed * 3) && mRequestCounter.intValue() < (imgNeed * 4)) {
 			current_ISO = ISO_VALUE_100;
 			current_EXP = EXPOSURE_TIME_1_50;
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed * 4) && mRequestCounter.intValue() < (imgNeed * 5)) {
+			current_ISO = ISO_VALUE_200;
+			current_EXP = EXPOSURE_TIME_1_50;
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed * 5) && mRequestCounter.intValue() < (imgNeed * 6)) {
+			current_ISO = ISO_VALUE_100;
+			current_EXP = EXPOSURE_TIME_1_200;
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed * 6) && mRequestCounter.intValue() < (imgNeed * 7)) {
+			current_ISO = ISO_VALUE_200;
+			current_EXP = EXPOSURE_TIME_1_200;
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed * 7) && mRequestCounter.intValue() < (imgNeed * 8)) {
+			current_ISO = ISO_VALUE_1000;
+			current_EXP = EXPOSURE_TIME_1_10;
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed * 8) && mRequestCounter.intValue() < (imgNeed * 9)) {
+			current_ISO = ISO_VALUE_1000;
+			current_EXP = EXPOSURE_TIME_1_50;
+			captureStillPictureLocked(current_ISO, current_EXP, true);
+		} else if (mRequestCounter.intValue() >= (imgNeed * 9) && mRequestCounter.intValue() < (imgNeed * 10)) {
+			current_ISO = ISO_VALUE_1000;
+			current_EXP = EXPOSURE_TIME_1_200;
 			captureStillPictureLocked(current_ISO, current_EXP, true);
 		}
 	}

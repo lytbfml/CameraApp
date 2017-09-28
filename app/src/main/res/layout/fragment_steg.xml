@@ -26,23 +26,27 @@
               android:layout_toEndOf="@+id/textView2"
               android:layout_below="@+id/textView3"/>
 
+    <ProgressBar
+            android:id="@+id/bar1"
+            style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+            android:theme="@style/LinearProgress"
+            android:layout_width="280dp"
+            android:layout_height="10dp"
+            android:layout_below="@+id/textView"
+            android:indeterminate="false"
+            android:layout_marginTop="15dp"
+            android:layout_centerInParent="true"
+            android:visibility="invisible"/>
+
     <TextureView
             android:id="@+id/texture"
-            android:layout_width="300dp"
-            android:layout_height="300dp"
-            android:layout_marginTop="40dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="30dp"
             android:layout_centerInParent="true"
             android:layout_below="@+id/textView"/>
 
-    <ProgressBar
-            android:id="@+id/bar1"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="300dp"
-            android:layout_height="10dp"
-            android:layout_below="@+id/texture"
-            android:layout_marginTop="20dp"
-            android:layout_centerInParent="true"
-            android:visibility="invisible"/>
+
 
     <ProgressBar
             android:id="@+id/bar2"
