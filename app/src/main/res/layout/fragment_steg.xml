@@ -3,12 +3,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" android:id="@+id/mainRelLayout">
 
-    <!--<com.stego.yangxiao.stegcam.AutoFitTextureView-->
-    <!--android:id="@+id/texture"-->
-    <!--android:layout_width="wrap_content"-->
-    <!--android:layout_height="wrap_content"-->
-    <!--android:layout_alignParentStart="true"-->
-    <!--android:layout_alignParentTop="true"/>-->
 
     <TextView android:id="@+id/textView3"
               android:layout_width="wrap_content"
@@ -32,17 +26,6 @@
               android:layout_toEndOf="@+id/textView2"
               android:layout_below="@+id/textView3"/>
 
-    <EditText
-            android:layout_width="200dp"
-            android:layout_height="wrap_content"
-            android:inputType="number"
-            android:ems="10"
-            android:layout_marginTop="100dp"
-            android:layout_below="@+id/textView2"
-            android:id="@+id/editText"
-            android:layout_centerHorizontal="true"
-            android:hint="@string/enterNumP"/>
-
     <ProgressBar
             android:id="@+id/bar1"
             style="?android:attr/progressBarStyleHorizontal"
@@ -50,7 +33,28 @@
             android:layout_height="8dp"
             android:layout_marginTop="20dp"
             android:layout_centerInParent="true"
-            android:visibility="gone"/>
+            android:layout_below="@+id/textView2"
+            android:visibility="visible"/>
+
+    <EditText
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:ems="10"
+            android:layout_marginTop="20dp"
+            android:layout_below="@+id/bar1"
+            android:id="@+id/editText"
+            android:layout_centerHorizontal="true"
+            android:hint="@string/enterNumP"/>
+
+
+    <TextureView
+            android:id="@+id/texture"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/editText"
+            android:layout_marginTop="20dp"/>
+
 
     <ProgressBar
             android:id="@+id/bar2"
