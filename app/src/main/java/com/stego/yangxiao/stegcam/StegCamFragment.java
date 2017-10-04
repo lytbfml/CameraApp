@@ -318,10 +318,22 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 								break;
 							}
 							
+							if(afState == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED)
+							{
+								Log.e(TAG, "The AF algorithm believes it is focused. The lens is not moving.");
+							}
+							else if(afState == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED)
+							{
+								Log.e(TAG, "The AF algorithm has been <unable> to focus. The lens is not moving.");
+							}
+							Log.e(TAG, mCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE) + "");
+							
 							// If auto-focus has reached locked state, we are ready to capture
 							readyToCapture =
 									(afState == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED ||
 											afState == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED);
+							
+							Log.w(TAG, "readyToCapture - afState " + readyToCapture);
 						}
 						
 						// If we are running on an non-legacy device, we should also wait until
@@ -336,6 +348,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 						readyToCapture = readyToCapture &&
 								aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED &&
 								awbState == CaptureResult.CONTROL_AWB_STATE_CONVERGED;
+						
+						Log.w(TAG, "readyToCapture - aewbState " + readyToCapture);
 						
 						if (!readyToCapture && hitTimeoutLocked()) {
 							Log.w(TAG, "Timed out waiting for pre-capture sequence to complete.");
@@ -383,6 +397,8 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		@Override
 		public void onCaptureStarted(CameraCaptureSession session, CaptureRequest request,
 		                             long timestamp, long frameNumber) {
+			Log.e(TAG,  "onCaptureStarted " + request.get(CaptureRequest.LENS_FOCUS_DISTANCE).toString());
+			Log.e(TAG,  "onCaptureStarted " + request.get(CaptureRequest.LENS_FOCAL_LENGTH).toString());
 			long expTime = (current_EXP / 1000000);
 			String expString = (current_EXP == 0 ? "Auto" : Long.toString(expTime));
 			String isoString = (current_ISO == 0 ? "Auto" : Integer.toString(current_ISO));
@@ -1105,10 +1121,10 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			if (!mNoAFRun) {
 				mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
 						CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
-				
+
 				mCaptureSession.capture(mPreviewRequestBuilder.build(), mPreCaptureCallback,
 						mBackgroundHandler);
-				
+
 				mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
 						CameraMetadata.CONTROL_AF_TRIGGER_IDLE);
 				Log.w(TAG, "Reset AF");
@@ -1118,12 +1134,12 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 		}
 		
 		if (mRequestCounter.intValue() < (imgNeed * 10)) {
-			new Handler().postDelayed(new Runnable() {
+			mBackgroundHandler.postDelayed(new Runnable() {
 				@Override
 				public void run() {
 					takePicture();
 				}
-			}, 500);
+			}, 3000);
 		}
 		if (mRequestCounter.intValue() >= (imgNeed * 10)) {
 			detachProcessBar();
@@ -1525,7 +1541,7 @@ public class StegCamFragment extends Fragment implements View.OnClickListener, F
 			});
 			
 			
-			new Handler().postDelayed(new Runnable() {
+			mBackgroundHandler.postDelayed(new Runnable() {
 				@Override
 				public void run() {
 					captureStillPictureLocked(current_ISO, current_EXP, false);
