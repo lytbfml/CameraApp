@@ -44,8 +44,11 @@ public class HelperMethod {
 	/**
 	 * Generate file based on iso and exp settings
 	 */
-	protected static File generateFileName(String isoString, String expString, File dir, String mScenePath) {
-		int num = dir.listFiles().length + 1;
+	protected static File generateFileName(String isoString, String expString, File dir, String
+			mScenePath, String id) {
+		File files[] = dir.listFiles();
+		int num= dir.listFiles().length + 1;
+		
 		int numD = 4 - String.valueOf(num).length();
 		StringBuilder sb = new StringBuilder();
 		for (int i = 0; i < numD; i++) {
@@ -54,9 +57,10 @@ public class HelperMethod {
 		sb.append(num + "");
 		
 		File rawFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) +
-				File.separator + "StegoCam" + File.separator + mScenePath + File.separator +
+				File.separator + "StegoCam" + File.separator + id + File.separator + mScenePath + File
+				.separator +
 				File.separator + "I" + isoString + "E" + expString +
-				File.separator + "RAW_" + sb.toString() + ".dng");
+				File.separator + "" + sb.toString() + ".dng");
 		
 		return rawFile;
 	}
